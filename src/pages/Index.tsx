@@ -1,13 +1,36 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardMetrics from "@/components/DashboardMetrics";
+import DeliveryMap from "@/components/DeliveryMap";
+import ShipmentTracker from "@/components/ShipmentTracker";
+import CustomerList from "@/components/CustomerList";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <DashboardLayout>
+      {/* Page heading */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white mb-1">Logistics Dashboard</h1>
+        <p className="text-gray-400">Monitor your shipments, optimize routes and track delivery performance</p>
       </div>
-    </div>
+      
+      {/* Metrics overview */}
+      <DashboardMetrics />
+      
+      {/* Main content section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Map area - takes 2/3 of the space on large screens */}
+        <div className="lg:col-span-2 space-y-6">
+          <DeliveryMap />
+          <ShipmentTracker />
+        </div>
+        
+        {/* Side panel - takes 1/3 of the space */}
+        <div className="space-y-6">
+          <CustomerList />
+        </div>
+      </div>
+    </DashboardLayout>
   );
 };
 

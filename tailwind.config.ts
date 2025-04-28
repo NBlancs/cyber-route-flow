@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,16 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Custom cyber theme colors
+				cyber: {
+					'neon': '#39FF14',
+					'dark': '#1A1F2C',
+					'gray': '#8E9196',
+					'blue': '#1EAEDB',
+					'black': '#0D1117',
+					'card': 'rgba(26, 31, 44, 0.8)', // Dark with opacity
+					'glow': 'rgba(57, 255, 20, 0.3)', // Neon green with opacity
 				}
 			},
 			borderRadius: {
@@ -70,25 +81,34 @@ export default {
 			},
 			keyframes: {
 				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' }
 				},
 				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' }
+				},
+				'pulse-glow': {
+					'0%, 100%': { boxShadow: '0 0 4px 0 rgba(57, 255, 20, 0.5)' },
+					'50%': { boxShadow: '0 0 8px 0 rgba(57, 255, 20, 0.8)' }
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-8px)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-glow': 'pulse-glow 2s infinite',
+				'float': 'float 4s ease-in-out infinite'
+			},
+			backgroundImage: {
+				'cyber-grid': 'linear-gradient(rgba(57, 255, 20, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(57, 255, 20, 0.08) 1px, transparent 1px)',
+				'glass-card': 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)'
+			},
+			backgroundSize: {
+				'cyber-grid': '40px 40px',
 			}
 		}
 	},
