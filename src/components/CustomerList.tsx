@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Package, CreditCard, RefreshCcw, AlertCircle, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,22 +39,30 @@ export default function CustomerList() {
         throw customersError;
       }
 
-      // Count active shipments for each customer
-      const { data: shipmentCounts, error: shipmentsError } = await supabase
-        .from('shipments')
-        .select('customer_id, count')
-        .neq('status', 'delivered')
-        .neq('status', 'failed')
-        .group('customer_id');
-
-      if (shipmentsError) {
-        console.error("Error fetching shipment counts:", shipmentsError);
-      }
+      // Count active shipments for each customer using separate queries
+      const activeShipmentsPromises = customersData.map(async (customer) => {
+        const { count, error } = await supabase
+          .from('shipments')
+          .select('*', { count: 'exact', head: true })
+          .eq('customer_id', customer.id)
+          .neq('status', 'delivered')
+          .neq('status', 'failed');
+          
+        return {
+          customerId: customer.id,
+          count: count || 0,
+          error
+        };
+      });
+      
+      const shipmentCounts = await Promise.all(activeShipmentsPromises);
 
       // Build a map of customer_id to shipment count
       const shipmentCountMap = new Map();
-      shipmentCounts?.forEach(item => {
-        shipmentCountMap.set(item.customer_id, parseInt(item.count));
+      shipmentCounts.forEach(item => {
+        if (!item.error) {
+          shipmentCountMap.set(item.customerId, item.count);
+        }
       });
 
       // Format customers with additional data

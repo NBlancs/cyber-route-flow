@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Package, Truck, RefreshCcw, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,7 +46,7 @@ export default function ShipmentTracker() {
         customer_id: shipment.customer_id,
         origin: shipment.origin,
         destination: shipment.destination,
-        status: shipment.status,
+        status: (shipment.status || 'processing') as 'processing' | 'in-transit' | 'delivered' | 'failed',
         eta: formatEta(shipment.eta),
         customer_name: shipment.customers?.name || 'Unknown Customer'
       }));
@@ -87,9 +86,9 @@ export default function ShipmentTracker() {
 
   const handleTrackShipment = async (trackingId: string) => {
     try {
+      // Using Lalamove, we need the orderId instead of tracking code and carrier
       const result = await trackShipment({
-        trackingCode: trackingId,
-        carrier: 'USPS' // Default carrier, could be dynamic
+        orderId: trackingId
       });
       
       if (result) {
@@ -113,40 +112,40 @@ export default function ShipmentTracker() {
   const mockShipments: Shipment[] = [
     {
       id: '1',
-      tracking_id: 'SHP-12345',
+      tracking_id: 'LAL-12345',
       customer_id: '1',
-      origin: 'San Francisco, CA',
-      destination: 'New York, NY',
+      origin: 'Makati, PH',
+      destination: 'Manila, PH',
       status: 'in-transit',
       eta: '3h 45m',
       customer_name: 'TechCorp Inc.'
     },
     {
       id: '2',
-      tracking_id: 'SHP-12346',
+      tracking_id: 'LAL-12346',
       customer_id: '2',
-      origin: 'Austin, TX',
-      destination: 'Seattle, WA',
+      origin: 'Taguig, PH',
+      destination: 'Quezon City, PH',
       status: 'processing',
       eta: 'Pending',
       customer_name: 'Global Systems'
     },
     {
       id: '3',
-      tracking_id: 'SHP-12347',
+      tracking_id: 'LAL-12347',
       customer_id: '3',
-      origin: 'Chicago, IL',
-      destination: 'Miami, FL',
+      origin: 'Pasig, PH',
+      destination: 'Alabang, PH',
       status: 'delivered',
       eta: 'Delivered',
       customer_name: 'Quantum Industries'
     },
     {
       id: '4',
-      tracking_id: 'SHP-12348',
+      tracking_id: 'LAL-12348',
       customer_id: '4',
-      origin: 'Boston, MA',
-      destination: 'Los Angeles, CA',
+      origin: 'Mandaluyong, PH',
+      destination: 'Pasay, PH',
       status: 'in-transit',
       eta: '1d 2h',
       customer_name: 'Future Dynamics'

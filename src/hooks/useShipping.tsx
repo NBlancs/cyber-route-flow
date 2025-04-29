@@ -27,10 +27,11 @@ interface ShippingData {
   fromAddress?: Address;
   parcel?: Parcel;
   options?: Record<string, any>;
-  shipmentId?: string;
-  rateId?: string;
-  trackingCode?: string;
-  carrier?: string;
+  quotationId?: string;
+  senderStopId?: string;
+  recipientStopId?: string;
+  orderId?: string;
+  status?: string;
 }
 
 export const useShipping = () => {
