@@ -1,12 +1,25 @@
 
 import React from "react";
-import { Package, RefreshCcw } from "lucide-react";
+import { Package, RefreshCcw, Pencil, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ShipmentTableRow } from "./shipping/ShipmentTableRow";
+import { ShipmentTableRow, Shipment } from "./shipping/ShipmentTableRow";
 import { EmptyShipmentState } from "./shipping/EmptyShipmentState";
 import { useShipmentData } from "@/hooks/useShipmentData";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-export default function ShipmentTracker() {
+type ShipmentTrackerProps = {
+  onEdit?: (shipment: Shipment) => void;
+  onDelete?: (shipment: Shipment) => void;
+};
+
+export default function ShipmentTracker({ onEdit, onDelete }: ShipmentTrackerProps) {
   const { 
     shipments, 
     loading, 
@@ -58,12 +71,58 @@ export default function ShipmentTracker() {
             </thead>
             <tbody>
               {shipments.map((shipment) => (
-                <ShipmentTableRow
-                  key={shipment.id}
-                  shipment={shipment}
-                  onTrack={handleTrackShipment}
-                  isTracking={trackingLoading}
-                />
+                <tr key={shipment.id} className="border-b border-gray-800">
+                  <ShipmentTableRow
+                    shipment={shipment}
+                    onTrack={handleTrackShipment}
+                    isTracking={trackingLoading}
+                  />
+                  {(onEdit || onDelete) && (
+                    <td className="py-3">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              width="24" 
+                              height="24" 
+                              viewBox="0 0 24 24" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              strokeWidth="2" 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round"
+                            >
+                              <circle cx="12" cy="12" r="1" />
+                              <circle cx="12" cy="5" r="1" />
+                              <circle cx="12" cy="19" r="1" />
+                            </svg>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {onEdit && (
+                            <DropdownMenuItem onClick={() => onEdit(shipment)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>Edit</span>
+                            </DropdownMenuItem>
+                          )}
+                          {onDelete && (
+                            <DropdownMenuItem 
+                              onClick={() => onDelete(shipment)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              <span>Delete</span>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  )}
+                </tr>
               ))}
 
               {shipments.length === 0 && <EmptyShipmentState />}

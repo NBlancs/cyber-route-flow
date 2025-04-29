@@ -1,5 +1,5 @@
 
-import { Package, RefreshCcw } from "lucide-react";
+import { Package, RefreshCcw, Pencil, Trash } from "lucide-react";
 import { usePaymentGateway } from "@/hooks/usePaymentGateway";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,21 @@ import { CustomerCard } from "@/components/customers/CustomerCard";
 import { EmptyCustomerState } from "@/components/customers/EmptyCustomerState";
 import { useCustomerData } from "@/hooks/useCustomerData";
 import { Customer } from "@/types/customer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-export default function CustomerList() {
+type CustomerListProps = {
+  onEdit?: (customer: Customer) => void;
+  onDelete?: (customer: Customer) => void;
+};
+
+export default function CustomerList({ onEdit, onDelete }: CustomerListProps) {
   const { customers, loading, fetchCustomers } = useCustomerData();
   const { toast } = useToast();
   const { createPaymentIntent, loading: paymentLoading } = usePaymentGateway();
@@ -67,12 +80,58 @@ export default function CustomerList() {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {customers.map((customer) => (
-            <CustomerCard 
-              key={customer.id} 
-              customer={customer} 
-              onRequestPayment={handlePaymentRequest}
-              paymentLoading={paymentLoading}
-            />
+            <div key={customer.id} className="relative">
+              {(onEdit || onDelete) && (
+                <div className="absolute top-2 right-2 z-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          width="24" 
+                          height="24" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="12" cy="12" r="1" />
+                          <circle cx="12" cy="5" r="1" />
+                          <circle cx="12" cy="19" r="1" />
+                        </svg>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {onEdit && (
+                        <DropdownMenuItem onClick={() => onEdit(customer)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          <span>Edit</span>
+                        </DropdownMenuItem>
+                      )}
+                      {onDelete && (
+                        <DropdownMenuItem 
+                          onClick={() => onDelete(customer)}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash className="mr-2 h-4 w-4" />
+                          <span>Delete</span>
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+              <CustomerCard 
+                customer={customer} 
+                onRequestPayment={handlePaymentRequest}
+                paymentLoading={paymentLoading}
+              />
+            </div>
           ))}
 
           {customers.length === 0 && <EmptyCustomerState />}
