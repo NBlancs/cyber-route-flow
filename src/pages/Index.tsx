@@ -4,8 +4,19 @@ import DashboardMetrics from "@/components/DashboardMetrics";
 import DeliveryMap from "@/components/DeliveryMap";
 import ShipmentTracker from "@/components/ShipmentTracker";
 import CustomerList from "@/components/CustomerList";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useShipmentData } from "@/hooks/useShipmentData";
+import { useCustomerData } from "@/hooks/useCustomerData";
 
 const Index = () => {
+  const { shipments } = useShipmentData();
+  const { customers } = useCustomerData();
+  
+  // Calculate summary metrics
+  const inTransitCount = shipments.filter(s => s.status === 'in-transit').length;
+  const activeCustomers = customers.filter(c => c.active_shipments && c.active_shipments > 0).length;
+  const overdueCustomers = customers.filter(c => c.credit_status === 'exceeded').length;
+
   return (
     <DashboardLayout>
       {/* Page heading */}
@@ -15,7 +26,40 @@ const Index = () => {
       </div>
       
       {/* Metrics overview */}
-      <DashboardMetrics />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Active Shipments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{inTransitCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Active Customers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeCustomers}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Overdue Customers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-500">{overdueCustomers}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Shipments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{shipments.length}</div>
+          </CardContent>
+        </Card>
+      </div>
       
       {/* Main content section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

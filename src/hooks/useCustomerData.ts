@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Customer } from "@/types/customer";
+import { Customer, PaymentMethod } from "@/types/customer";
 
 export function useCustomerData() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -88,7 +88,11 @@ export function useCustomerData() {
     {
       id: '1',
       name: 'TechCorp Inc.',
+      email: 'contact@techcorp.com',
+      phone: '+63 9123456789',
       location: 'San Francisco, CA',
+      city: 'San Francisco',
+      state: 'CA',
       active_shipments: 5,
       credit_status: 'good',
       credit_limit: 50000,
@@ -97,7 +101,11 @@ export function useCustomerData() {
     {
       id: '2',
       name: 'Global Systems',
+      email: 'info@globalsys.com',
+      phone: '+63 9223456789',
       location: 'Austin, TX',
+      city: 'Austin',
+      state: 'TX',
       active_shipments: 3,
       credit_status: 'warning',
       credit_limit: 30000,
@@ -106,7 +114,11 @@ export function useCustomerData() {
     {
       id: '3',
       name: 'Quantum Industries',
+      email: 'sales@quantum.com',
+      phone: '+63 9323456789',
       location: 'Chicago, IL',
+      city: 'Chicago',
+      state: 'IL',
       active_shipments: 7,
       credit_status: 'exceeded',
       credit_limit: 40000,

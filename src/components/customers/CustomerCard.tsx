@@ -1,7 +1,9 @@
 
-import { CreditCard } from "lucide-react";
+import { CreditCard, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { Customer } from "@/types/customer";
+import { CustomerPaymentModal } from "./CustomerPaymentModal";
 
 interface CustomerCardProps {
   customer: Customer;
@@ -10,6 +12,8 @@ interface CustomerCardProps {
 }
 
 export function CustomerCard({ customer, onRequestPayment, paymentLoading }: CustomerCardProps) {
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  
   // Calculate credit percentage used
   const creditPercentage = (customer.credit_used / customer.credit_limit) * 100;
   
@@ -26,10 +30,16 @@ export function CustomerCard({ customer, onRequestPayment, paymentLoading }: Cus
         <div>
           <h3 className="font-medium text-white">{customer.name}</h3>
           <p className="text-gray-400 text-sm">{customer.location}</p>
+          {customer.email && (
+            <p className="text-gray-400 text-xs mt-1">{customer.email}</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-cyber-neon text-sm">{customer.active_shipments}</span>
-          <span className="text-xs text-gray-400">shipments</span>
+          <span className="text-xs text-gray-400">
+            <Package size={14} className="inline mr-1" />
+            shipments
+          </span>
         </div>
       </div>
       
@@ -47,21 +57,25 @@ export function CustomerCard({ customer, onRequestPayment, paymentLoading }: Cus
           ></div>
         </div>
 
-        {creditPercentage >= 90 && (
-          <div className="mt-3 flex justify-end">
-            <Button 
-              size="sm"
-              variant="ghost"
-              className="text-xs h-8"
-              onClick={() => onRequestPayment(customer)}
-              disabled={paymentLoading}
-            >
-              <CreditCard size={14} className="mr-1" /> 
-              Request Payment
-            </Button>
-          </div>
-        )}
+        <div className="mt-3 flex justify-end">
+          <Button 
+            size="sm"
+            variant="ghost"
+            className="text-xs h-8"
+            onClick={() => setShowPaymentModal(true)}
+            disabled={paymentLoading}
+          >
+            <CreditCard size={14} className="mr-1" /> 
+            Process Payment
+          </Button>
+        </div>
       </div>
+      
+      <CustomerPaymentModal 
+        customer={customer}
+        open={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+      />
     </div>
   );
 }
