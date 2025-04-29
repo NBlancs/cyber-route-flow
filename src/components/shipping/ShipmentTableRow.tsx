@@ -19,6 +19,7 @@ interface ShipmentTableRowProps {
   shipment: Shipment;
   onTrack: (trackingId: string) => void;
   isTracking: boolean;
+  actions?: React.ReactNode;
 }
 
 export function ShipmentTableRow({ shipment, onTrack, isTracking }: ShipmentTableRowProps) {
