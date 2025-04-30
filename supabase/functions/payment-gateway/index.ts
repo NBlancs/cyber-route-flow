@@ -64,18 +64,20 @@ serve(async (req) => {
         }
       };
 
-      // For this example, we're creating a checkout session - in production use real Paymongo API
       console.log("Creating checkout session with data:", JSON.stringify(checkoutData));
       
-      // Simulate a response from PayMongo (in production, this would be a real API call)
-      const checkoutUrl = `https://checkout.paymongo.com/checkout.html?id=test_checkout_${Date.now()}`;
+      // In production, you would make a real API call to PayMongo
+      // For now, we'll simulate a response
+      const checkoutId = `test_checkout_${Date.now()}`;
+      const checkoutUrl = `https://checkout.paymongo.com/checkout.html?id=${checkoutId}`;
       
-      // Record this payment intent in your database (in production)
+      // Add a unique identifier for each checkout URL to prevent browser caching 
+      const uniqueCheckoutUrl = `${checkoutUrl}&_=${Date.now()}`;
       
       return new Response(
         JSON.stringify({ 
           data: {
-            checkoutUrl,
+            checkoutUrl: uniqueCheckoutUrl,
             paymentIntentId: `test_intent_${Date.now()}`,
             amount: paymentData.amount,
             customerId: paymentData.customerId
@@ -83,7 +85,13 @@ serve(async (req) => {
         }),
         {
           status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+          },
         }
       );
     } else if (action === "confirm-payment") {

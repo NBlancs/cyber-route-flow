@@ -22,6 +22,9 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (processingPayment) return; // Prevent multiple submissions
+    
     setProcessingPayment(true);
     
     try {
@@ -53,6 +56,7 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
         description: "Could not process payment request",
         variant: "destructive",
       });
+    } finally {
       setProcessingPayment(false);
     }
   };
@@ -77,10 +81,10 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
               
               <div className="space-y-2">
                 <label htmlFor="amount" className="text-sm font-medium leading-none">
-                  Payment Amount (USD)
+                  Payment Amount (PHP)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+                  <span className="absolute left-3 top-2.5 text-gray-400">₱</span>
                   <input
                     id="amount"
                     type="text"
@@ -95,7 +99,10 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
                 <Button variant="outline" onClick={onClose} disabled={processingPayment}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={processingPayment || loading}>
+                <Button 
+                  type="submit" 
+                  disabled={processingPayment || loading}
+                >
                   {processingPayment ? "Processing..." : "Process Payment"}
                 </Button>
               </div>

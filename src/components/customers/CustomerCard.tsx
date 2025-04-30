@@ -45,9 +45,9 @@ export function CustomerCard({ customer, onRequestPayment, paymentLoading }: Cus
       
       <div className="mt-3">
         <div className="flex justify-between text-xs mb-1">
-          <span>Credit Limit: ${(customer.credit_limit / 1000).toFixed(1)}k</span>
+          <span>Credit Limit: ₱{(customer.credit_limit / 1000).toFixed(1)}k</span>
           <span className={creditPercentage >= 100 ? 'text-red-400' : 'text-gray-400'}>
-            ${(customer.credit_used / 1000).toFixed(1)}k used
+            ₱{(customer.credit_used / 1000).toFixed(1)}k used
           </span>
         </div>
         <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
