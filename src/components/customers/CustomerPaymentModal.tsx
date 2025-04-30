@@ -65,7 +65,7 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
         // Small delay to allow the modal to close
         setTimeout(() => {
           // Redirect to the payment checkout URL
-          window.location.href = result.data.checkoutUrl!;
+          window.open(result.data.checkoutUrl, "_blank");
         }, 100);
       } else {
         throw new Error("Failed to create payment checkout URL");
