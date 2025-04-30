@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,10 +20,18 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
   const { createPaymentIntent, loading } = usePaymentGateway();
   const { toast } = useToast();
   
+  // Prevent closing the modal while payment is being processed
+  useEffect(() => {
+    if (!processingPayment && !loading && open) {
+      // Reset form when modal opens
+      setAmount("100.00");
+    }
+  }, [open, processingPayment, loading]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (processingPayment) return; // Prevent multiple submissions
+    if (processingPayment || loading) return; // Prevent multiple submissions
     
     setProcessingPayment(true);
     
@@ -51,8 +59,14 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
           description: "You will be redirected to complete the payment",
         });
         
-        // Redirect to the payment checkout URL
-        window.location.href = result.data.checkoutUrl;
+        // Close the modal before redirecting
+        onClose();
+        
+        // Small delay to allow the modal to close
+        setTimeout(() => {
+          // Redirect to the payment checkout URL
+          window.location.href = result.data.checkoutUrl!;
+        }, 100);
       } else {
         throw new Error("Failed to create payment checkout URL");
       }
@@ -69,11 +83,20 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
   };
   
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen && !processingPayment) {
+        onClose();
+      }
+    }}>
       <DialogContent className="sm:max-w-[425px] bg-gray-900 border border-gray-800 text-white">
         <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle>Process Payment</DialogTitle>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose}
+            disabled={processingPayment || loading}
+          >
             <X size={18} />
           </Button>
         </DialogHeader>
@@ -98,19 +121,24 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="w-full bg-gray-800 border border-gray-700 rounded-md pl-8 pr-4 py-2 focus:ring-cyber-neon focus:border-cyber-neon focus:outline-none"
+                    disabled={processingPayment || loading}
                   />
                 </div>
               </div>
               
               <div className="pt-2 flex justify-end space-x-2">
-                <Button variant="outline" onClick={onClose} disabled={processingPayment}>
+                <Button 
+                  variant="outline" 
+                  onClick={onClose} 
+                  disabled={processingPayment || loading}
+                >
                   Cancel
                 </Button>
                 <Button 
                   type="submit" 
                   disabled={processingPayment || loading}
                 >
-                  {processingPayment ? "Processing..." : "Process Payment"}
+                  {processingPayment || loading ? "Processing..." : "Process Payment"}
                 </Button>
               </div>
             </div>

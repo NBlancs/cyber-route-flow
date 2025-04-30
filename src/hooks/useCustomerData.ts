@@ -89,20 +89,25 @@ export function useCustomerData() {
       const paymentId = urlParams.get('payment_id');
       
       if (paymentId) {
+        console.log("Detected payment return. Status:", paymentStatus, "Payment ID:", paymentId);
+        
         if (paymentStatus === 'success') {
           try {
             // Confirm the payment with PayMongo
             console.log("Confirming payment:", paymentId);
-            await confirmPayment({
+            const result = await confirmPayment({
               paymentIntentId: paymentId,
               amount: 0, // Will be fetched from the payment intent
               description: "Payment confirmation"
             });
             
-            toast({
-              title: "Payment Successful",
-              description: "Your payment has been processed successfully",
-            });
+            if (result && result.paymentDetails?.updated) {
+              console.log("Payment updated successfully:", result);
+              // Refresh customer data to show updated credit information
+              fetchCustomers();
+            } else {
+              console.log("Payment confirmation received but no update needed:", result);
+            }
           } catch (error) {
             console.error("Error confirming payment:", error);
           }
@@ -114,17 +119,17 @@ export function useCustomerData() {
           });
         }
         
-        // Refresh customer data to show updated credit information
-        fetchCustomers();
-        
         // Clear the URL parameters
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     };
     
     handlePaymentReturn();
+    // Only run this once when component mounts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Fetch customers on initial load
   useEffect(() => {
     fetchCustomers();
   }, []);

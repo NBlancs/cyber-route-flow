@@ -12,12 +12,30 @@ interface PaymentData {
   customerId?: string;
 }
 
+interface PaymentResponse {
+  data?: {
+    checkoutUrl?: string;
+    paymentIntentId?: string;
+    amount?: number;
+    customerId?: string;
+  };
+  status?: string;
+  message?: string;
+  paymentDetails?: {
+    status: string;
+    amount: number;
+    customerId: string;
+    paymentIntentId: string;
+    updated: boolean;
+  };
+}
+
 export const usePaymentGateway = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const createPaymentIntent = async (paymentData: PaymentData) => {
+  const createPaymentIntent = async (paymentData: PaymentData): Promise<PaymentResponse | null> => {
     setLoading(true);
     setError(null);
 
@@ -39,16 +57,21 @@ export const usePaymentGateway = () => {
       }
       
       console.log("Payment intent created:", data);
-      return data;
+      return data as PaymentResponse;
     } catch (err: any) {
       setError(err.message || 'Failed to create payment intent');
+      toast({
+        title: "Payment Error",
+        description: err.message || "Failed to create payment",
+        variant: "destructive",
+      });
       return null;
     } finally {
       setLoading(false);
     }
   };
 
-  const confirmPayment = async (paymentData: PaymentData) => {
+  const confirmPayment = async (paymentData: PaymentData): Promise<PaymentResponse | null> => {
     setLoading(true);
     setError(null);
 
@@ -60,10 +83,25 @@ export const usePaymentGateway = () => {
         },
       });
 
-      if (error) throw new Error(error.message);
-      return data;
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      if (data && data.paymentDetails?.updated) {
+        toast({
+          title: "Payment Successful",
+          description: "Your payment has been processed successfully",
+        });
+      }
+      
+      return data as PaymentResponse;
     } catch (err: any) {
       setError(err.message || 'Failed to confirm payment');
+      toast({
+        title: "Payment Error",
+        description: err.message || "Failed to confirm payment",
+        variant: "destructive",
+      });
       return null;
     } finally {
       setLoading(false);

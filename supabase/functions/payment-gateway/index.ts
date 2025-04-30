@@ -64,7 +64,8 @@ serve(async (req) => {
         const paymentIntentId = paymentIntentData.data.id;
         const clientKey = paymentIntentData.data.attributes.client_key;
         
-        // Then create a payment method
+        // Then create a payment link
+        const timestamp = Date.now();
         const paymentMethodResponse = await fetch(`${PAYMONGO_API_URL}/links`, {
           method: "POST",
           headers: {
@@ -77,12 +78,13 @@ serve(async (req) => {
                 amount: Math.floor(paymentData.amount * 100),
                 description: paymentData.description,
                 currency: "PHP",
-                success_url: `${paymentData.returnUrl}?payment_status=success&payment_id=${paymentIntentId}`,
-                cancel_url: `${paymentData.returnUrl}?payment_status=failed&payment_id=${paymentIntentId}`,
-                reference_number: `order_${Date.now()}`,
+                success_url: `${paymentData.returnUrl}?payment_status=success&payment_id=${paymentIntentId}&t=${timestamp}`,
+                cancel_url: `${paymentData.returnUrl}?payment_status=failed&payment_id=${paymentIntentId}&t=${timestamp}`,
+                reference_number: `order_${timestamp}`,
                 metadata: {
                   customer_id: paymentData.customerId,
-                  payment_intent_id: paymentIntentId
+                  payment_intent_id: paymentIntentId,
+                  payment_amount: paymentData.amount
                 }
               }
             }
@@ -130,8 +132,8 @@ serve(async (req) => {
         );
       }
     } else if (action === "confirm-payment") {
-      // In production, this would retrieve the payment status from PayMongo
-      const { paymentIntentId, customerId, amount } = paymentData;
+      // Retrieve and process the payment status
+      const { paymentIntentId, customerId } = paymentData;
 
       try {
         // Retrieve the payment intent status
@@ -143,42 +145,73 @@ serve(async (req) => {
         });
         
         const paymentIntentData = await paymentIntentResponse.json();
+        console.log("Payment intent retrieved:", JSON.stringify(paymentIntentData));
         
         if (!paymentIntentResponse.ok) {
           throw new Error(paymentIntentData.errors?.[0]?.detail || "Failed to retrieve payment intent");
         }
         
         const status = paymentIntentData.data.attributes.status;
+        const amount = paymentData.amount || paymentIntentData.data.attributes.amount / 100;
         
         // If payment was successful, update customer's credit_used in the database
-        if (status === "succeeded" && customerId && amount) {
-          // Deduct the paid amount from the customer's credit_used
-          const { data, error } = await req.supabase
-            .from('customers')
-            .select('credit_used')
-            .eq('id', customerId)
-            .single();
-            
-          if (error) {
-            throw new Error(`Database error: ${error.message}`);
+        if (status === "succeeded" && customerId) {
+          console.log(`Processing successful payment: ${customerId}, amount: ${amount}`);
+          
+          // Get current customer data
+          const { data: customerData, error: fetchError } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${customerId}&select=credit_used`, {
+            headers: {
+              "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+              "Content-Type": "application/json"
+            }
+          }).then(res => res.json());
+          
+          if (fetchError || !customerData || customerData.length === 0) {
+            throw new Error(`Failed to fetch customer data: ${fetchError?.message || "Customer not found"}`);
           }
-            
-          const newCreditUsed = Math.max(0, data.credit_used - amount);
-            
-          const { error: updateError } = await req.supabase
-            .from('customers')
-            .update({ credit_used: newCreditUsed })
-            .eq('id', customerId);
-            
-          if (updateError) {
-            throw new Error(`Database update error: ${updateError.message}`);
+          
+          const currentCreditUsed = customerData[0].credit_used || 0;
+          const newCreditUsed = Math.max(0, currentCreditUsed - amount);
+          
+          console.log(`Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
+          
+          // Update the customer record
+          const updateResponse = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${customerId}`, {
+            method: "PATCH",
+            headers: {
+              "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+              "Content-Type": "application/json",
+              "Prefer": "return=minimal"
+            },
+            body: JSON.stringify({
+              credit_used: newCreditUsed
+            })
+          });
+          
+          if (!updateResponse.ok) {
+            const updateError = await updateResponse.text();
+            throw new Error(`Database update error: ${updateError}`);
           }
+          
+          console.log("Customer credit updated successfully");
+          
+          // Create a payment record in the database (optional, for payment history)
+          // This would require a payments table to be created
         }
         
         return new Response(
           JSON.stringify({ 
             status: status === "succeeded" ? "success" : "pending",
-            message: status === "succeeded" ? "Payment confirmed" : "Payment is being processed" 
+            message: status === "succeeded" ? "Payment confirmed" : "Payment is being processed",
+            paymentDetails: {
+              status,
+              amount,
+              customerId,
+              paymentIntentId,
+              updated: status === "succeeded"
+            }
           }),
           {
             status: 200,
@@ -206,20 +239,30 @@ serve(async (req) => {
         
         if (metadata && metadata.customer_id) {
           // Update customer credit in database
-          const { data, error } = await req.supabase
-            .from('customers')
-            .select('credit_used')
-            .eq('id', metadata.customer_id)
-            .single();
-            
-          if (!error && data) {
+          const { data, error } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}&select=credit_used`, {
+            headers: {
+              "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+              "Content-Type": "application/json"
+            }
+          }).then(res => res.json());
+          
+          if (!error && data && data.length > 0) {
             const amount = paymentData.attributes.amount / 100; // Convert from cents
-            const newCreditUsed = Math.max(0, data.credit_used - amount);
+            const newCreditUsed = Math.max(0, data[0].credit_used - amount);
             
-            await req.supabase
-              .from('customers')
-              .update({ credit_used: newCreditUsed })
-              .eq('id', metadata.customer_id);
+            await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}`, {
+              method: "PATCH",
+              headers: {
+                "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal"
+              },
+              body: JSON.stringify({
+                credit_used: newCreditUsed
+              })
+            });
           }
         }
       }

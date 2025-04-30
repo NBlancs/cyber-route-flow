@@ -24,6 +24,15 @@ export function CustomerCard({ customer, onRequestPayment, paymentLoading }: Cus
     'exceeded': 'bg-red-500'
   }[customer.credit_status || 'good'];
   
+  // Format currency values
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'decimal',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value / 1000);
+  };
+  
   return (
     <div className="bg-white/5 border border-gray-800/60 rounded-lg p-4">
       <div className="flex justify-between items-start">
@@ -45,9 +54,9 @@ export function CustomerCard({ customer, onRequestPayment, paymentLoading }: Cus
       
       <div className="mt-3">
         <div className="flex justify-between text-xs mb-1">
-          <span>Credit Limit: ₱{(customer.credit_limit / 1000).toFixed(1)}k</span>
+          <span>Credit Limit: ₱{formatCurrency(customer.credit_limit)}k</span>
           <span className={creditPercentage >= 100 ? 'text-red-400' : 'text-gray-400'}>
-            ₱{(customer.credit_used / 1000).toFixed(1)}k used
+            ₱{formatCurrency(customer.credit_used)}k used
           </span>
         </div>
         <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
@@ -75,6 +84,10 @@ export function CustomerCard({ customer, onRequestPayment, paymentLoading }: Cus
         customer={customer}
         open={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
+        onSuccess={() => {
+          // This will be called after a successful payment
+          // but we're handling it in useCustomerData hook now
+        }}
       />
     </div>
   );
