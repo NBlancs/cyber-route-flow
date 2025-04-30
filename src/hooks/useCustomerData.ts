@@ -2,12 +2,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Customer, PaymentMethod } from "@/types/customer";
+import { Customer } from "@/types/customer";
+import { usePaymentGateway } from "@/hooks/usePaymentGateway";
 
 export function useCustomerData() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { confirmPayment } = usePaymentGateway();
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -79,37 +81,48 @@ export function useCustomerData() {
     }
   };
 
-  // Listen for payment confirmation via URL parameters
+  // Handle payment confirmation via URL parameters
   useEffect(() => {
-    const checkUrlForPaymentReturn = () => {
+    const handlePaymentReturn = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const paymentStatus = urlParams.get('payment_status');
       const paymentId = urlParams.get('payment_id');
       
-      if (paymentStatus === 'success' && paymentId) {
-        toast({
-          title: "Payment Successful",
-          description: "Your payment has been processed successfully",
-        });
+      if (paymentId) {
+        if (paymentStatus === 'success') {
+          try {
+            // Confirm the payment with PayMongo
+            console.log("Confirming payment:", paymentId);
+            await confirmPayment({
+              paymentIntentId: paymentId,
+              amount: 0, // Will be fetched from the payment intent
+              description: "Payment confirmation"
+            });
+            
+            toast({
+              title: "Payment Successful",
+              description: "Your payment has been processed successfully",
+            });
+          } catch (error) {
+            console.error("Error confirming payment:", error);
+          }
+        } else if (paymentStatus === 'failed') {
+          toast({
+            title: "Payment Failed",
+            description: "Your payment could not be processed",
+            variant: "destructive",
+          });
+        }
         
         // Refresh customer data to show updated credit information
         fetchCustomers();
         
         // Clear the URL parameters
         window.history.replaceState({}, document.title, window.location.pathname);
-      } else if (paymentStatus === 'failed') {
-        toast({
-          title: "Payment Failed",
-          description: "Your payment could not be processed",
-          variant: "destructive",
-        });
-        
-        // Clear the URL parameters
-        window.history.replaceState({}, document.title, window.location.pathname);
       }
     };
     
-    checkUrlForPaymentReturn();
+    handlePaymentReturn();
   }, []);
 
   useEffect(() => {

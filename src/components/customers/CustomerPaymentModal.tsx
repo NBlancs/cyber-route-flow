@@ -29,13 +29,20 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
     
     try {
       // Create a payment intent
+      const parsedAmount = parseFloat(amount);
+      
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        throw new Error("Please enter a valid amount");
+      }
+      
       const paymentData = {
-        amount: parseFloat(amount),
+        amount: parsedAmount,
         description: `Payment from ${customer.name}`,
         returnUrl: window.location.origin + "/customers",
         customerId: customer.id,
       };
       
+      console.log("Creating payment with data:", paymentData);
       const result = await createPaymentIntent(paymentData);
       
       if (result && result.data && result.data.checkoutUrl) {
@@ -49,11 +56,11 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
       } else {
         throw new Error("Failed to create payment checkout URL");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Payment error:", error);
       toast({
         title: "Payment Error",
-        description: "Could not process payment request",
+        description: error.message || "Could not process payment request",
         variant: "destructive",
       });
     } finally {

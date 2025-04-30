@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface PaymentData {
   amount: number;
@@ -14,6 +15,7 @@ interface PaymentData {
 export const usePaymentGateway = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const createPaymentIntent = async (paymentData: PaymentData) => {
     setLoading(true);
@@ -27,7 +29,16 @@ export const usePaymentGateway = () => {
         },
       });
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        toast({
+          title: "Payment Error",
+          description: error.message || "Failed to create payment",
+          variant: "destructive",
+        });
+        throw new Error(error.message);
+      }
+      
+      console.log("Payment intent created:", data);
       return data;
     } catch (err: any) {
       setError(err.message || 'Failed to create payment intent');

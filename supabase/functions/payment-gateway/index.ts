@@ -29,91 +29,200 @@ serve(async (req) => {
     const authHeader = `Basic ${btoa(secretKey + ":")}`;
 
     if (action === "create-payment-intent") {
-      // Create a checkout session for redirect
-      const checkoutData = {
-        data: {
-          attributes: {
-            line_items: [
-              {
-                name: paymentData.description,
-                amount: Math.floor(paymentData.amount * 100), // Convert to smallest currency unit
-                currency: "PHP",
-                quantity: 1
-              }
-            ],
-            payment_method_types: ["card", "gcash", "grab_pay"],
-            success_url: paymentData.returnUrl || "https://example.com/success",
-            cancel_url: paymentData.returnUrl || "https://example.com/cancel",
-            billing: {
-              address: {
-                line1: "Test Address",
-                city: "Manila",
-                state: "Metro Manila",
-                country: "PH",
-                postal_code: "1234"
-              },
-              name: "Test Customer",
-              email: "testcustomer@example.com",
-              phone: "+639123456789"
-            },
-            metadata: {
-              customer_id: paymentData.customerId
-            },
-            send_email_receipt: false
-          }
-        }
-      };
-
-      console.log("Creating checkout session with data:", JSON.stringify(checkoutData));
-      
-      // In production, you would make a real API call to PayMongo
-      // For now, we'll simulate a response
-      const checkoutId = `test_checkout_${Date.now()}`;
-      const checkoutUrl = `https://checkout.paymongo.com/checkout.html?id=${checkoutId}`;
-      
-      // Add a unique identifier for each checkout URL to prevent browser caching 
-      const uniqueCheckoutUrl = `${checkoutUrl}&_=${Date.now()}`;
-      
-      return new Response(
-        JSON.stringify({ 
-          data: {
-            checkoutUrl: uniqueCheckoutUrl,
-            paymentIntentId: `test_intent_${Date.now()}`,
-            amount: paymentData.amount,
-            customerId: paymentData.customerId
-          }
-        }),
-        {
-          status: 200,
-          headers: { 
-            ...corsHeaders, 
+      try {
+        // First create a payment intent
+        const paymentIntentResponse = await fetch(`${PAYMONGO_API_URL}/payment_intents`, {
+          method: "POST",
+          headers: {
             "Content-Type": "application/json",
-            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
+            "Authorization": authHeader,
           },
+          body: JSON.stringify({
+            data: {
+              attributes: {
+                amount: Math.floor(paymentData.amount * 100), // Convert to smallest currency unit
+                payment_method_allowed: ["card", "gcash", "grab_pay"],
+                currency: "PHP",
+                capture_type: "automatic",
+                description: paymentData.description,
+                statement_descriptor: "LOGTECHPAY",
+                metadata: {
+                  customer_id: paymentData.customerId
+                }
+              }
+            }
+          })
+        });
+        
+        const paymentIntentData = await paymentIntentResponse.json();
+        console.log("Payment intent created:", JSON.stringify(paymentIntentData));
+        
+        if (!paymentIntentResponse.ok) {
+          throw new Error(paymentIntentData.errors?.[0]?.detail || "Failed to create payment intent");
         }
-      );
-    } else if (action === "confirm-payment") {
-      // Handle payment confirmation
-      // In production, this would be called by a webhook from PayMongo
-      
-      // Update customer credit balance in database based on payment
-      if (paymentData.customerId && paymentData.amount) {
-        // In production, you would verify the payment status with PayMongo first
-        console.log(`Payment confirmed: ${paymentData.amount} for customer ${paymentData.customerId}`);
+        
+        const paymentIntentId = paymentIntentData.data.id;
+        const clientKey = paymentIntentData.data.attributes.client_key;
+        
+        // Then create a payment method
+        const paymentMethodResponse = await fetch(`${PAYMONGO_API_URL}/links`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": authHeader,
+          },
+          body: JSON.stringify({
+            data: {
+              attributes: {
+                amount: Math.floor(paymentData.amount * 100),
+                description: paymentData.description,
+                currency: "PHP",
+                success_url: `${paymentData.returnUrl}?payment_status=success&payment_id=${paymentIntentId}`,
+                cancel_url: `${paymentData.returnUrl}?payment_status=failed&payment_id=${paymentIntentId}`,
+                reference_number: `order_${Date.now()}`,
+                metadata: {
+                  customer_id: paymentData.customerId,
+                  payment_intent_id: paymentIntentId
+                }
+              }
+            }
+          })
+        });
+        
+        const paymentMethodData = await paymentMethodResponse.json();
+        console.log("Payment link created:", JSON.stringify(paymentMethodData));
+        
+        if (!paymentMethodResponse.ok) {
+          throw new Error(paymentMethodData.errors?.[0]?.detail || "Failed to create payment link");
+        }
+        
+        // Get the checkout URL from the payment link
+        const checkoutUrl = paymentMethodData.data.attributes.checkout_url;
+        
+        return new Response(
+          JSON.stringify({ 
+            data: {
+              checkoutUrl: checkoutUrl,
+              paymentIntentId: paymentIntentId,
+              amount: paymentData.amount,
+              customerId: paymentData.customerId
+            }
+          }),
+          {
+            status: 200,
+            headers: { 
+              ...corsHeaders, 
+              "Content-Type": "application/json",
+              "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+              "Pragma": "no-cache",
+              "Expires": "0"
+            },
+          }
+        );
+      } catch (apiError) {
+        console.error("PayMongo API error:", apiError);
+        return new Response(
+          JSON.stringify({ error: apiError.message || "Payment gateway error" }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          }
+        );
       }
-      
-      return new Response(
-        JSON.stringify({ status: "success", message: "Payment confirmed" }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+    } else if (action === "confirm-payment") {
+      // In production, this would retrieve the payment status from PayMongo
+      const { paymentIntentId, customerId, amount } = paymentData;
+
+      try {
+        // Retrieve the payment intent status
+        const paymentIntentResponse = await fetch(`${PAYMONGO_API_URL}/payment_intents/${paymentIntentId}`, {
+          method: "GET",
+          headers: {
+            "Authorization": authHeader,
+          }
+        });
+        
+        const paymentIntentData = await paymentIntentResponse.json();
+        
+        if (!paymentIntentResponse.ok) {
+          throw new Error(paymentIntentData.errors?.[0]?.detail || "Failed to retrieve payment intent");
         }
-      );
+        
+        const status = paymentIntentData.data.attributes.status;
+        
+        // If payment was successful, update customer's credit_used in the database
+        if (status === "succeeded" && customerId && amount) {
+          // Deduct the paid amount from the customer's credit_used
+          const { data, error } = await req.supabase
+            .from('customers')
+            .select('credit_used')
+            .eq('id', customerId)
+            .single();
+            
+          if (error) {
+            throw new Error(`Database error: ${error.message}`);
+          }
+            
+          const newCreditUsed = Math.max(0, data.credit_used - amount);
+            
+          const { error: updateError } = await req.supabase
+            .from('customers')
+            .update({ credit_used: newCreditUsed })
+            .eq('id', customerId);
+            
+          if (updateError) {
+            throw new Error(`Database update error: ${updateError.message}`);
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            status: status === "succeeded" ? "success" : "pending",
+            message: status === "succeeded" ? "Payment confirmed" : "Payment is being processed" 
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      } catch (apiError) {
+        console.error("PayMongo confirmation error:", apiError);
+        return new Response(
+          JSON.stringify({ error: apiError.message || "Payment confirmation error" }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          }
+        );
+      }
     } else if (action === "handle-webhook") {
-      // Process PayMongo webhook events (for production use)
-      console.log("Received webhook event:", paymentData);
+      // Process PayMongo webhook events
+      const event = paymentData.data;
+      
+      // Implement webhook handling for payment confirmations
+      if (event && event.type === "payment.paid") {
+        const paymentData = event.data;
+        const metadata = paymentData.attributes.metadata;
+        
+        if (metadata && metadata.customer_id) {
+          // Update customer credit in database
+          const { data, error } = await req.supabase
+            .from('customers')
+            .select('credit_used')
+            .eq('id', metadata.customer_id)
+            .single();
+            
+          if (!error && data) {
+            const amount = paymentData.attributes.amount / 100; // Convert from cents
+            const newCreditUsed = Math.max(0, data.credit_used - amount);
+            
+            await req.supabase
+              .from('customers')
+              .update({ credit_used: newCreditUsed })
+              .eq('id', metadata.customer_id);
+          }
+        }
+      }
       
       return new Response(
         JSON.stringify({ status: "success" }),
