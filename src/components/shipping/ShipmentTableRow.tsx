@@ -1,8 +1,16 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Truck } from "lucide-react";
+import { Truck, MapPin } from "lucide-react";
 import { ShipmentStatusBadge } from "./ShipmentStatusBadge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export interface Shipment {
   id: string;
@@ -22,7 +30,19 @@ interface ShipmentTableRowProps {
   actions?: React.ReactNode;
 }
 
-export function ShipmentTableRow({ shipment, onTrack, isTracking }: ShipmentTableRowProps) {
+export function ShipmentTableRow({ shipment, onTrack, isTracking, actions }: ShipmentTableRowProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  const handleTrackClick = () => {
+    onTrack(shipment.tracking_id);
+    setShowTooltip(true);
+    
+    // Auto-hide tooltip after 5 seconds
+    setTimeout(() => {
+      setShowTooltip(false);
+    }, 5000);
+  };
+
   return (
     <tr className="text-sm border-b border-gray-800/50 hover:bg-white/5">
       <td className="py-3 text-cyber-neon">{shipment.tracking_id}</td>
@@ -38,16 +58,31 @@ export function ShipmentTableRow({ shipment, onTrack, isTracking }: ShipmentTabl
       </td>
       <td className="py-3">{shipment.eta}</td>
       <td className="py-3">
-        <Button 
-          size="sm" 
-          variant="ghost"
-          className="text-xs h-8"
-          onClick={() => onTrack(shipment.tracking_id)}
-          disabled={isTracking}
-        >
-          <Truck size={14} className="mr-1" /> Track
-        </Button>
+        <Tooltip open={showTooltip} onOpenChange={setShowTooltip}>
+          <TooltipTrigger asChild>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              className="text-xs h-8"
+              onClick={handleTrackClick}
+              disabled={isTracking}
+            >
+              <Truck size={14} className="mr-1" /> Track
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="bg-black border border-cyber-neon p-3">
+            <div className="flex items-center gap-2">
+              <MapPin size={14} className="text-cyber-neon" />
+              <span>Tracking request sent. Check the notification for location.</span>
+            </div>
+          </TooltipContent>
+        </Tooltip>
       </td>
+      {actions && (
+        <td className="py-3">
+          {actions}
+        </td>
+      )}
     </tr>
   );
 }

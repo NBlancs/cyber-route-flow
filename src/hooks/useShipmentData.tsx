@@ -2,15 +2,17 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useShipping } from "@/hooks/useShipping";
+import { useShipping, TrackingResult } from "@/hooks/useShipping";
 import { Shipment } from "@/components/shipping/ShipmentTableRow";
 import { formatShippingEta } from "@/utils/formatShippingEta";
 
 export function useShipmentData() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [currentTrackingInfo, setCurrentTrackingInfo] = useState<TrackingResult | null>(null);
   const { toast } = useToast();
-  const { trackShipment, loading: trackingLoading } = useShipping();
+  const { trackShipment } = useShipping();
 
   // Mock shipments data for when database is empty
   const mockShipments: Shipment[] = [
@@ -95,26 +97,44 @@ export function useShipmentData() {
   };
 
   const handleTrackShipment = async (trackingId: string) => {
+    setTrackingLoading(true);
     try {
-      // Using Lalamove, we need the orderId instead of tracking code and carrier
-      const result = await trackShipment({
-        orderId: trackingId
-      });
+      const result = await trackShipment(trackingId);
       
       if (result) {
+        setCurrentTrackingInfo(result);
+        
+        // Display tracking information
+        const locationText = result.location ? 
+          `at ${result.location.address || 'current location'}` : 
+          '';
+
+        const driverText = result.driverInfo && result.driverInfo.name ? 
+          `Driver: ${result.driverInfo.name}` : 
+          '';
+
+        const etaText = result.estimatedDeliveryTime ? 
+          `ETA: ${result.estimatedDeliveryTime}` : 
+          '';
+          
         toast({
-          title: "Tracking Updated",
-          description: `Latest status: ${result.status}`,
+          title: `Tracking Status: ${result.status}`,
+          description: `${locationText} ${driverText} ${etaText}`.trim() || 'No additional details available',
+          duration: 5000,
         });
-        // Refresh shipments to show updated tracking
+        
+        // Refresh shipments to show updated tracking status
         fetchShipments();
       }
     } catch (error) {
+      console.error("Error tracking shipment:", error);
       toast({
         title: "Tracking Failed",
         description: "Could not retrieve tracking information",
         variant: "destructive",
       });
+    } finally {
+      setTrackingLoading(false);
     }
   };
 
@@ -126,6 +146,7 @@ export function useShipmentData() {
     shipments: shipments.length > 0 ? shipments : mockShipments,
     loading,
     trackingLoading,
+    currentTrackingInfo,
     fetchShipments,
     handleTrackShipment,
   };

@@ -170,10 +170,27 @@ serve(async (req) => {
       });
       
     } else if (action === "track-shipment") {
-      // Track a shipment
-      const orderId = shippingData.orderId;
-      const trackPath = `/v3/orders/${orderId}`;
+      // Enhanced tracking implementation
+      const trackingId = shippingData.trackingId;
       
+      if (!trackingId) {
+        return new Response(
+          JSON.stringify({ error: "Tracking ID is required" }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          }
+        );
+      }
+      
+      // In a real implementation, we'd use the Lalamove API
+      // For now, we'll mock the location tracking response based on the tracking ID
+      console.log(`Tracking shipment with ID: ${trackingId}`);
+      
+      // In production, we would make a real API call to Lalamove
+      // Example of how we'd make the API call:
+      /*
+      const trackPath = `/v3/orders/${trackingId}`;
       const signature = await generateSignature(
         apiKey,
         secretKey,
@@ -193,11 +210,56 @@ serve(async (req) => {
       });
       
       const trackData = await trackResponse.json();
+      */
       
-      return new Response(JSON.stringify(trackData), {
-        status: trackResponse.status,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // For demo purposes, we'll mock different responses based on tracking ID
+      // This would be replaced with actual API responses in production
+      let mockResponse;
+      
+      if (trackingId.includes('2929')) {
+        // Shipment in transit
+        mockResponse = {
+          status: "in-transit",
+          driver: {
+            name: "Juan Dela Cruz",
+            phone: "+639123456789",
+            photo: "https://randomuser.me/api/portraits/men/32.jpg"
+          },
+          location: {
+            lat: 14.5995,
+            lng: 120.9842,
+            address: "Taguig City, Metro Manila"
+          },
+          eta: "35 minutes",
+          description: "Driver is on the way to delivery location"
+        };
+      } else if (trackingId.includes('3029')) {
+        // Shipment being processed
+        mockResponse = {
+          status: "processing",
+          location: {
+            lat: 14.6060,
+            lng: 121.0222,
+            address: "Sorting Facility, Pasig City"
+          },
+          eta: "2 hours",
+          description: "Package is being processed at sorting facility"
+        };
+      } else {
+        // Default response
+        mockResponse = {
+          status: "unknown",
+          description: "No tracking information available for this shipment"
+        };
+      }
+
+      return new Response(
+        JSON.stringify(mockResponse),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
     }
 
     return new Response(

@@ -31,12 +31,30 @@ interface ShippingData {
   senderStopId?: string;
   recipientStopId?: string;
   orderId?: string;
+  trackingId?: string;
   status?: string;
+}
+
+export interface TrackingResult {
+  status: string;
+  driverInfo?: {
+    name?: string;
+    phone?: string;
+    photo?: string;
+  };
+  location?: {
+    lat: number;
+    lng: number;
+    address?: string;
+  };
+  estimatedDeliveryTime?: string;
+  description?: string;
 }
 
 export const useShipping = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [trackingResult, setTrackingResult] = useState<TrackingResult | null>(null);
 
   const createShipment = async (shippingData: ShippingData) => {
     setLoading(true);
@@ -82,20 +100,34 @@ export const useShipping = () => {
     }
   };
 
-  const trackShipment = async (shippingData: ShippingData) => {
+  const trackShipment = async (trackingId: string) => {
     setLoading(true);
     setError(null);
+    setTrackingResult(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('shipping', {
         body: {
           action: 'track-shipment',
-          shippingData,
+          shippingData: {
+            trackingId
+          },
         },
       });
 
       if (error) throw new Error(error.message);
-      return data;
+      
+      // Process and format the tracking data
+      const trackingData: TrackingResult = {
+        status: data.status || 'unknown',
+        driverInfo: data.driver || {},
+        location: data.location || {},
+        estimatedDeliveryTime: data.eta || '',
+        description: data.description || ''
+      };
+
+      setTrackingResult(trackingData);
+      return trackingData;
     } catch (err: any) {
       setError(err.message || 'Failed to track shipment');
       return null;
@@ -108,6 +140,7 @@ export const useShipping = () => {
     createShipment,
     buyShipment,
     trackShipment,
+    trackingResult,
     loading,
     error,
   };
