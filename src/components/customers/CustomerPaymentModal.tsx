@@ -17,7 +17,7 @@ interface CustomerPaymentModalProps {
 export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: CustomerPaymentModalProps) {
   const [amount, setAmount] = useState("100.00");
   const [processingPayment, setProcessingPayment] = useState(false);
-  const { createPaymentIntent, confirmPayment, loading } = usePaymentGateway();
+  const { createPaymentIntent, loading } = usePaymentGateway();
   const { toast } = useToast();
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,33 +29,30 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
       const paymentData = {
         amount: parseFloat(amount),
         description: `Payment from ${customer.name}`,
-        returnUrl: window.location.href,
+        returnUrl: window.location.origin + "/customers",
+        customerId: customer.id,
       };
       
       const result = await createPaymentIntent(paymentData);
       
-      if (result && result.data) {
+      if (result && result.data && result.data.checkoutUrl) {
         toast({
-          title: "Payment initiated",
-          description: "Payment has been successfully initiated",
+          title: "Redirecting to payment gateway",
+          description: "You will be redirected to complete the payment",
         });
         
-        // In a real app, you would redirect to a payment page or open a modal for payment info
-        // For now, we'll just assume it's successful
-        if (onSuccess) {
-          onSuccess();
-        }
-        onClose();
+        // Redirect to the payment checkout URL
+        window.location.href = result.data.checkoutUrl;
       } else {
-        throw new Error("Failed to create payment intent");
+        throw new Error("Failed to create payment checkout URL");
       }
     } catch (error) {
+      console.error("Payment error:", error);
       toast({
         title: "Payment Error",
         description: "Could not process payment request",
         variant: "destructive",
       });
-    } finally {
       setProcessingPayment(false);
     }
   };

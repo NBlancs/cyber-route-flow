@@ -5,6 +5,8 @@ export interface Customer {
   location?: string;
   city?: string;
   state?: string;
+  country?: string;
+  zip?: string;
   credit_limit: number;
   credit_used: number;
   active_shipments?: number;

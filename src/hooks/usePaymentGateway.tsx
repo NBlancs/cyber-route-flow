@@ -8,6 +8,7 @@ interface PaymentData {
   paymentMethodId?: string;
   paymentIntentId?: string;
   returnUrl?: string;
+  customerId?: string;
 }
 
 export const usePaymentGateway = () => {
@@ -58,9 +59,32 @@ export const usePaymentGateway = () => {
     }
   };
 
+  const processWebhook = async (webhookData: any) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('payment-gateway', {
+        body: {
+          action: 'handle-webhook',
+          paymentData: webhookData,
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      return data;
+    } catch (err: any) {
+      setError(err.message || 'Failed to process webhook');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     createPaymentIntent,
     confirmPayment,
+    processWebhook,
     loading,
     error,
   };

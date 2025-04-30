@@ -79,6 +79,39 @@ export function useCustomerData() {
     }
   };
 
+  // Listen for payment confirmation via URL parameters
+  useEffect(() => {
+    const checkUrlForPaymentReturn = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentStatus = urlParams.get('payment_status');
+      const paymentId = urlParams.get('payment_id');
+      
+      if (paymentStatus === 'success' && paymentId) {
+        toast({
+          title: "Payment Successful",
+          description: "Your payment has been processed successfully",
+        });
+        
+        // Refresh customer data to show updated credit information
+        fetchCustomers();
+        
+        // Clear the URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (paymentStatus === 'failed') {
+        toast({
+          title: "Payment Failed",
+          description: "Your payment could not be processed",
+          variant: "destructive",
+        });
+        
+        // Clear the URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    };
+    
+    checkUrlForPaymentReturn();
+  }, []);
+
   useEffect(() => {
     fetchCustomers();
   }, []);
