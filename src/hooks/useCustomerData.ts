@@ -69,6 +69,7 @@ export function useCustomerData() {
       });
 
       setCustomers(formattedCustomers);
+      console.log("Customers data refreshed:", formattedCustomers);
     } catch (error) {
       console.error("Error fetching customers:", error);
       toast({
@@ -97,14 +98,16 @@ export function useCustomerData() {
             const statusResult = await checkPaymentStatus(paymentId);
             console.log("Payment status check result:", statusResult);
             
-            // Now confirm the payment with PayMongo
             if (statusResult && statusResult.paymentDetails) {
+              // Now confirm the payment with PayMongo
               const result = await confirmPayment({
                 paymentIntentId: paymentId,
                 amount: statusResult.paymentDetails.amount || 0,
                 customerId: statusResult.paymentDetails.customerId,
                 description: "Payment confirmation"
               });
+              
+              console.log("Payment confirmation result:", result);
               
               if (result && result.paymentDetails?.updated) {
                 console.log("Payment updated successfully:", result);
@@ -124,6 +127,10 @@ export function useCustomerData() {
                 // Still refresh to show latest data
                 fetchCustomers();
               }
+            } else {
+              // If we couldn't get the payment details, still refresh the data
+              console.log("Could not retrieve payment details, refreshing data anyway");
+              fetchCustomers();
             }
           } catch (error) {
             console.error("Error confirming payment:", error);
@@ -132,6 +139,8 @@ export function useCustomerData() {
               description: "There was an issue updating the payment status.",
               variant: "destructive",
             });
+            // Still try to refresh the data
+            fetchCustomers();
           }
         } else if (paymentStatus === 'failed') {
           toast({
@@ -147,13 +156,13 @@ export function useCustomerData() {
     };
     
     handlePaymentReturn();
-    // Only run this once when component mounts
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch customers on initial load
   useEffect(() => {
     fetchCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Using mock data if the database is empty

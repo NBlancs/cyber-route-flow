@@ -32,6 +32,8 @@ export default function CustomerList({ onEdit, onDelete }: CustomerListProps) {
       const result = await createPaymentIntent({
         amount: 100, // $1.00
         description: `Credit increase for ${customer.name}`,
+        returnUrl: window.location.origin + "/customers",
+        customerId: customer.id,
       });
       
       if (result) {
@@ -39,6 +41,9 @@ export default function CustomerList({ onEdit, onDelete }: CustomerListProps) {
           title: "Payment Request Sent",
           description: "The customer has been notified about the payment request",
         });
+        
+        // Refresh customer data after payment is created
+        fetchCustomers();
       }
     } catch (error) {
       toast({

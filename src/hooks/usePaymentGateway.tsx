@@ -85,6 +85,8 @@ export const usePaymentGateway = () => {
     setError(null);
 
     try {
+      console.log("Confirming payment with data:", paymentData);
+      
       const { data, error } = await supabase.functions.invoke('payment-gateway', {
         body: {
           action: 'confirm-payment',
@@ -96,10 +98,17 @@ export const usePaymentGateway = () => {
         throw new Error(error.message);
       }
       
+      console.log("Payment confirmation response:", data);
+      
       if (data && data.paymentDetails?.updated) {
         toast({
           title: "Payment Successful",
           description: "Your payment has been processed successfully",
+        });
+      } else if (data && data.status === "pending") {
+        toast({
+          title: "Payment Processing",
+          description: "Your payment is being processed",
         });
       }
       
@@ -122,6 +131,8 @@ export const usePaymentGateway = () => {
     setError(null);
 
     try {
+      console.log("Checking payment status for:", paymentIntentId);
+      
       const { data, error } = await supabase.functions.invoke('payment-gateway', {
         body: {
           action: 'check-payment-status',
@@ -130,6 +141,8 @@ export const usePaymentGateway = () => {
       });
 
       if (error) throw new Error(error.message);
+      
+      console.log("Payment status response:", data);
       return data as PaymentResponse;
     } catch (err: any) {
       setError(err.message || 'Failed to check payment status');

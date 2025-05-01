@@ -112,37 +112,45 @@ serve(async (req) => {
           try {
             console.log(`Updating payment for customer: ${paymentData.customerId}`);
             
-            // Get current customer data
-            const { data: customerData, error: fetchError } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${paymentData.customerId}&select=credit_used`, {
-              headers: {
-                "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
-                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
-                "Content-Type": "application/json"
+            // First check if the customer exists by querying the ID directly
+            const { data: customerData, error: fetchError } = await fetch(
+              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${paymentData.customerId}&select=credit_used`, 
+              {
+                headers: {
+                  "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+                  "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+                  "Content-Type": "application/json"
+                }
               }
-            }).then(res => res.json());
+            ).then(res => res.json());
             
-            if (fetchError || !customerData || customerData.length === 0) {
-              throw new Error(`Failed to fetch customer data: ${fetchError?.message || "Customer not found"}`);
+            // Check if customer data was found
+            if (!customerData || !Array.isArray(customerData) || customerData.length === 0) {
+              console.error(`Customer not found with ID: ${paymentData.customerId}`);
+              throw new Error(`Customer not found with ID: ${paymentData.customerId}`);
             }
             
-            const currentCreditUsed = customerData[0].credit_used || 0;
+            const currentCreditUsed = customerData[0]?.credit_used || 0;
             const newCreditUsed = Math.max(0, currentCreditUsed - paymentData.amount);
             
             console.log(`Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
             
             // Update the customer record
-            const updateResponse = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${paymentData.customerId}`, {
-              method: "PATCH",
-              headers: {
-                "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
-                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal"
-              },
-              body: JSON.stringify({
-                credit_used: newCreditUsed
-              })
-            });
+            const updateResponse = await fetch(
+              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${paymentData.customerId}`, 
+              {
+                method: "PATCH",
+                headers: {
+                  "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+                  "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+                  "Content-Type": "application/json",
+                  "Prefer": "return=minimal"
+                },
+                body: JSON.stringify({
+                  credit_used: newCreditUsed
+                })
+              }
+            );
             
             if (!updateResponse.ok) {
               const updateError = await updateResponse.text();
@@ -229,18 +237,22 @@ serve(async (req) => {
           try {
             console.log(`Processing ${status} payment: ${retrievedCustomerId}, amount: ${paymentAmount}`);
             
-            // Get current customer data
-            const { data: customerData, error: fetchError } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}&select=credit_used`, {
-              headers: {
-                "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
-                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
-                "Content-Type": "application/json"
+            // First check if the customer exists by querying the ID directly
+            const { data: customerData, error: fetchError } = await fetch(
+              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}&select=credit_used`, 
+              {
+                headers: {
+                  "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+                  "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+                  "Content-Type": "application/json"
+                }
               }
-            }).then(res => res.json());
+            ).then(res => res.json());
             
-            if (fetchError || !customerData || customerData.length === 0) {
-              console.error("Failed to fetch customer data:", fetchError || "Customer not found");
-              throw new Error(`Failed to fetch customer data: ${fetchError?.message || "Customer not found"}`);
+            // Check if customer data was found
+            if (!customerData || !Array.isArray(customerData) || customerData.length === 0) {
+              console.error(`Customer not found with ID: ${retrievedCustomerId}`);
+              throw new Error(`Customer not found with ID: ${retrievedCustomerId}`);
             }
             
             const currentCreditUsed = customerData[0].credit_used || 0;
@@ -249,18 +261,21 @@ serve(async (req) => {
             console.log(`Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
             
             // Update the customer record
-            const updateResponse = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}`, {
-              method: "PATCH",
-              headers: {
-                "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
-                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal"
-              },
-              body: JSON.stringify({
-                credit_used: newCreditUsed
-              })
-            });
+            const updateResponse = await fetch(
+              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}`, 
+              {
+                method: "PATCH",
+                headers: {
+                  "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+                  "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+                  "Content-Type": "application/json",
+                  "Prefer": "return=minimal"
+                },
+                body: JSON.stringify({
+                  credit_used: newCreditUsed
+                })
+              }
+            );
             
             if (!updateResponse.ok) {
               const updateError = await updateResponse.text();
@@ -316,20 +331,30 @@ serve(async (req) => {
         
         if (metadata && metadata.customer_id) {
           try {
-            // Update customer credit in database
-            const { data, error } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}&select=credit_used`, {
-              headers: {
-                "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
-                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
-                "Content-Type": "application/json"
+            // First check if the customer exists
+            const { data: customerData, error: fetchError } = await fetch(
+              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}&select=credit_used`, 
+              {
+                headers: {
+                  "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+                  "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+                  "Content-Type": "application/json"
+                }
               }
-            }).then(res => res.json());
+            ).then(res => res.json());
             
-            if (!error && data && data.length > 0) {
-              const amount = paymentData.attributes.amount / 100; // Convert from cents
-              const newCreditUsed = Math.max(0, data[0].credit_used - amount);
-              
-              await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}`, {
+            // Check if customer data was found
+            if (!customerData || !Array.isArray(customerData) || customerData.length === 0) {
+              console.error(`Customer not found with ID: ${metadata.customer_id}`);
+              throw new Error(`Customer not found with ID: ${metadata.customer_id}`);
+            }
+            
+            const amount = paymentData.attributes.amount / 100; // Convert from cents
+            const newCreditUsed = Math.max(0, customerData[0].credit_used - amount);
+            
+            await fetch(
+              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}`, 
+              {
                 method: "PATCH",
                 headers: {
                   "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
@@ -340,10 +365,10 @@ serve(async (req) => {
                 body: JSON.stringify({
                   credit_used: newCreditUsed
                 })
-              });
+              }
+            );
               
-              console.log(`Webhook updated customer credit: ${metadata.customer_id}, amount: ${amount}`);
-            }
+            console.log(`Webhook updated customer credit: ${metadata.customer_id}, amount: ${amount}`);
           } catch (error) {
             console.error("Error processing webhook:", error);
           }

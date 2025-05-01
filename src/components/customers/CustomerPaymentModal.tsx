@@ -77,9 +77,16 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
           
           // Small delay to allow the toast to be seen
           setTimeout(() => {
-            // Redirect to the payment checkout URL
+            // Redirect to the payment checkout URL in a new tab
             window.open(result.data.checkoutUrl, "_blank");
-          }, 1500);
+            
+            // After a short delay, trigger refresh of customer data anyway
+            setTimeout(() => {
+              if (onSuccess) {
+                onSuccess();
+              }
+            }, 1000);
+          }, 1000);
         }
       } else {
         throw new Error("Failed to create payment checkout URL");

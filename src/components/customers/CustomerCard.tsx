@@ -33,6 +33,11 @@ export function CustomerCard({ customer, onRequestPayment, paymentLoading }: Cus
     }).format(value / 1000);
   };
   
+  const handlePaymentSuccess = () => {
+    // This will trigger a refresh of customer data through the parent component
+    window.location.reload();
+  };
+  
   return (
     <div className="bg-white/5 border border-gray-800/60 rounded-lg p-4">
       <div className="flex justify-between items-start">
@@ -84,10 +89,7 @@ export function CustomerCard({ customer, onRequestPayment, paymentLoading }: Cus
         customer={customer}
         open={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
-        onSuccess={() => {
-          // This will trigger a refresh of customer data
-          window.location.reload();
-        }}
+        onSuccess={handlePaymentSuccess}
       />
     </div>
   );
