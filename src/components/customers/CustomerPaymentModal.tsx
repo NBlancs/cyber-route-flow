@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Customer } from "@/types/customer";
 import { usePaymentGateway } from "@/hooks/usePaymentGateway";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CustomerPaymentModalProps {
   customer: Customer;
@@ -27,6 +27,39 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
       setProcessingPayment(false);
     }
   }, [open]);
+  
+  // Function to update customer credit in Supabase
+  const updateCustomerCredit = async (customerId: string, paymentAmount: number) => {
+    try {
+      // First get the current credit_used value
+      const { data: customerData, error: fetchError } = await supabase
+        .from('customers')
+        .select('credit_used')
+        .eq('id', customerId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Calculate the new credit_used value
+      const currentCredit = customerData?.credit_used || 0;
+      const newCredit = currentCredit + paymentAmount;
+      
+      console.log(`Updating customer ${customerId} credit: ${currentCredit} + ${paymentAmount} = ${newCredit}`);
+      
+      // Update the customer record
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({ credit_used: newCredit })
+        .eq('id', customerId);
+      
+      if (updateError) throw updateError;
+      
+      return true;
+    } catch (error) {
+      console.error("Error updating customer credit:", error);
+      throw error;
+    }
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +87,9 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
       const result = await createPaymentIntent(paymentData);
       
       if (result && result.data && result.data.checkoutUrl) {
+        // Update customer credit in Supabase
+        await updateCustomerCredit(customer.id, parsedAmount);
+        
         // Close the modal before redirecting
         onClose();
         
@@ -72,7 +108,7 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
           // Show a processing toast
           toast({
             title: "Payment Processing",
-            description: "Your payment is being processed. Redirecting to payment gateway...",
+            description: "Your payment is being processed. Credit added. Redirecting to payment gateway...",
           });
           
           // Small delay to allow the toast to be seen
