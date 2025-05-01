@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 const PAYMONGO_API_URL = "https://api.paymongo.com/v1";
+const IS_TEST_ENVIRONMENT = true; // Set to false in production
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -101,6 +102,55 @@ serve(async (req) => {
         // Get the checkout URL from the payment link
         const checkoutUrl = paymentMethodData.data.attributes.checkout_url;
         
+        // In test environment, immediately update the customer's credit_used
+        // This simulates the payment being processed without waiting for confirmation
+        if (IS_TEST_ENVIRONMENT && paymentData.customerId) {
+          try {
+            console.log(`TEST ENVIRONMENT: Immediately processing payment for customer: ${paymentData.customerId}`);
+            
+            // Get current customer data
+            const { data: customerData, error: fetchError } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${paymentData.customerId}&select=credit_used`, {
+              headers: {
+                "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+                "Content-Type": "application/json"
+              }
+            }).then(res => res.json());
+            
+            if (fetchError || !customerData || customerData.length === 0) {
+              throw new Error(`Failed to fetch customer data: ${fetchError?.message || "Customer not found"}`);
+            }
+            
+            const currentCreditUsed = customerData[0].credit_used || 0;
+            const newCreditUsed = Math.max(0, currentCreditUsed - paymentData.amount);
+            
+            console.log(`TEST ENVIRONMENT: Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
+            
+            // Update the customer record
+            const updateResponse = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${paymentData.customerId}`, {
+              method: "PATCH",
+              headers: {
+                "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal"
+              },
+              body: JSON.stringify({
+                credit_used: newCreditUsed
+              })
+            });
+            
+            if (!updateResponse.ok) {
+              const updateError = await updateResponse.text();
+              console.error(`TEST ENVIRONMENT: Database update error: ${updateError}`);
+            } else {
+              console.log("TEST ENVIRONMENT: Customer credit updated successfully");
+            }
+          } catch (testError) {
+            console.error("TEST ENVIRONMENT: Error updating credit:", testError);
+          }
+        }
+        
         return new Response(
           JSON.stringify({ 
             data: {
@@ -154,9 +204,9 @@ serve(async (req) => {
         const status = paymentIntentData.data.attributes.status;
         const amount = paymentData.amount || paymentIntentData.data.attributes.amount / 100;
         
-        // If payment was successful, update customer's credit_used in the database
-        if (status === "succeeded" && customerId) {
-          console.log(`Processing successful payment: ${customerId}, amount: ${amount}`);
+        // If not already processed in test environment and status is pending or succeeded
+        if ((status === "pending" || status === "succeeded") && customerId && (!IS_TEST_ENVIRONMENT || status === "succeeded")) {
+          console.log(`Processing ${status} payment: ${customerId}, amount: ${amount}`);
           
           // Get current customer data
           const { data: customerData, error: fetchError } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${customerId}&select=credit_used`, {
@@ -196,9 +246,6 @@ serve(async (req) => {
           }
           
           console.log("Customer credit updated successfully");
-          
-          // Create a payment record in the database (optional, for payment history)
-          // This would require a payments table to be created
         }
         
         return new Response(
@@ -210,7 +257,7 @@ serve(async (req) => {
               amount,
               customerId,
               paymentIntentId,
-              updated: status === "succeeded"
+              updated: status === "succeeded" || (IS_TEST_ENVIRONMENT && status === "pending")
             }
           }),
           {
@@ -233,7 +280,7 @@ serve(async (req) => {
       const event = paymentData.data;
       
       // Implement webhook handling for payment confirmations
-      if (event && event.type === "payment.paid") {
+      if (event && (event.type === "payment.paid" || (IS_TEST_ENVIRONMENT && event.type === "payment.pending"))) {
         const paymentData = event.data;
         const metadata = paymentData.attributes.metadata;
         

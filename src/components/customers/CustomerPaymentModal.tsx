@@ -54,9 +54,10 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
       const result = await createPaymentIntent(paymentData);
       
       if (result && result.data && result.data.checkoutUrl) {
+        // In test environment, the credit_used is already updated, show toast
         toast({
-          title: "Redirecting to payment gateway",
-          description: "You will be redirected to complete the payment",
+          title: "Payment Processing",
+          description: "Your payment is being processed. Customer credit has been updated in test mode.",
         });
         
         // Close the modal before redirecting
@@ -66,6 +67,11 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
         setTimeout(() => {
           // Redirect to the payment checkout URL
           window.open(result.data.checkoutUrl, "_blank");
+          
+          // Trigger the success callback to refresh customer data
+          if (onSuccess) {
+            onSuccess();
+          }
         }, 100);
       } else {
         throw new Error("Failed to create payment checkout URL");

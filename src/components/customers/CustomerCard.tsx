@@ -85,8 +85,8 @@ export function CustomerCard({ customer, onRequestPayment, paymentLoading }: Cus
         open={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         onSuccess={() => {
-          // This will be called after a successful payment
-          // but we're handling it in useCustomerData hook now
+          // This will trigger a refresh of customer data
+          window.location.reload();
         }}
       />
     </div>

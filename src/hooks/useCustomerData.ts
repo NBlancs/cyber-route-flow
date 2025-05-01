@@ -91,7 +91,7 @@ export function useCustomerData() {
       if (paymentId) {
         console.log("Detected payment return. Status:", paymentStatus, "Payment ID:", paymentId);
         
-        if (paymentStatus === 'success') {
+        if (paymentStatus === 'success' || paymentStatus === 'pending') {
           try {
             // Confirm the payment with PayMongo
             console.log("Confirming payment:", paymentId);
@@ -103,13 +103,29 @@ export function useCustomerData() {
             
             if (result && result.paymentDetails?.updated) {
               console.log("Payment updated successfully:", result);
+              // Show success toast
+              toast({
+                title: "Payment Processed",
+                description: "Your payment has been processed and credit has been updated.",
+              });
               // Refresh customer data to show updated credit information
               fetchCustomers();
             } else {
               console.log("Payment confirmation received but no update needed:", result);
+              toast({
+                title: "Payment Processing",
+                description: "Your payment is being processed.",
+              });
+              // Still refresh to show latest data
+              fetchCustomers();
             }
           } catch (error) {
             console.error("Error confirming payment:", error);
+            toast({
+              title: "Payment Update Error",
+              description: "There was an issue updating the payment status.",
+              variant: "destructive",
+            });
           }
         } else if (paymentStatus === 'failed') {
           toast({
