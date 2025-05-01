@@ -9,9 +9,15 @@ interface CustomerCardProps {
   customer: Customer;
   onRequestPayment: (customer: Customer) => void;
   paymentLoading: boolean;
+  onPaymentSuccess?: () => void;
 }
 
-export function CustomerCard({ customer, onRequestPayment, paymentLoading }: CustomerCardProps) {
+export function CustomerCard({ 
+  customer, 
+  onRequestPayment, 
+  paymentLoading,
+  onPaymentSuccess
+}: CustomerCardProps) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   
   // Calculate credit percentage used
@@ -34,8 +40,12 @@ export function CustomerCard({ customer, onRequestPayment, paymentLoading }: Cus
   };
   
   const handlePaymentSuccess = () => {
-    // This will trigger a refresh of customer data through the parent component
-    window.location.reload();
+    if (onPaymentSuccess) {
+      onPaymentSuccess();
+    } else {
+      // Fallback to refresh the page if no callback is provided
+      window.location.reload();
+    }
   };
   
   return (

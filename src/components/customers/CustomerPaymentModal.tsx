@@ -20,14 +20,14 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
   const { createPaymentIntent, loading } = usePaymentGateway();
   const { toast } = useToast();
   
-  // Prevent closing the modal while payment is being processed
+  // Reset form when modal opens
   useEffect(() => {
-    if (!processingPayment && !loading && open) {
-      // Reset form when modal opens
+    if (open) {
       setAmount("100.00");
+      setProcessingPayment(false);
     }
-  }, [open, processingPayment, loading]);
-
+  }, [open]);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -98,7 +98,6 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
         description: error.message || "Could not process payment request",
         variant: "destructive",
       });
-    } finally {
       setProcessingPayment(false);
     }
   };

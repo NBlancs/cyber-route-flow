@@ -1,5 +1,6 @@
 
-import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
+// Import from the latest Deno standard library
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 const PAYMONGO_API_URL = "https://api.paymongo.com/v1";
@@ -110,19 +111,26 @@ serve(async (req) => {
         let paymentUpdated = false;
         if (paymentData.customerId) {
           try {
-            console.log(`Updating payment for customer: ${paymentData.customerId}`);
+            console.log(`Checking if customer exists before updating: ${paymentData.customerId}`);
             
             // First check if the customer exists by querying the ID directly
-            const { data: customerData, error: fetchError } = await fetch(
-              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${paymentData.customerId}&select=credit_used`, 
+            const customerCheckResponse = await fetch(
+              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${paymentData.customerId}&select=id,credit_used`, 
               {
+                method: "GET",
                 headers: {
                   "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
                   "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
                   "Content-Type": "application/json"
                 }
               }
-            ).then(res => res.json());
+            );
+            
+            if (!customerCheckResponse.ok) {
+              throw new Error(`Failed to fetch customer data: ${await customerCheckResponse.text()}`);
+            }
+            
+            const customerData = await customerCheckResponse.json();
             
             // Check if customer data was found
             if (!customerData || !Array.isArray(customerData) || customerData.length === 0) {
@@ -130,6 +138,7 @@ serve(async (req) => {
               throw new Error(`Customer not found with ID: ${paymentData.customerId}`);
             }
             
+            console.log(`Customer found:`, JSON.stringify(customerData));
             const currentCreditUsed = customerData[0]?.credit_used || 0;
             const newCreditUsed = Math.max(0, currentCreditUsed - paymentData.amount);
             
@@ -238,16 +247,23 @@ serve(async (req) => {
             console.log(`Processing ${status} payment: ${retrievedCustomerId}, amount: ${paymentAmount}`);
             
             // First check if the customer exists by querying the ID directly
-            const { data: customerData, error: fetchError } = await fetch(
-              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}&select=credit_used`, 
+            const customerCheckResponse = await fetch(
+              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}&select=id,credit_used`, 
               {
+                method: "GET",
                 headers: {
                   "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
                   "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
                   "Content-Type": "application/json"
                 }
               }
-            ).then(res => res.json());
+            );
+            
+            if (!customerCheckResponse.ok) {
+              throw new Error(`Failed to fetch customer data: ${await customerCheckResponse.text()}`);
+            }
+            
+            const customerData = await customerCheckResponse.json();
             
             // Check if customer data was found
             if (!customerData || !Array.isArray(customerData) || customerData.length === 0) {
@@ -332,16 +348,23 @@ serve(async (req) => {
         if (metadata && metadata.customer_id) {
           try {
             // First check if the customer exists
-            const { data: customerData, error: fetchError } = await fetch(
-              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}&select=credit_used`, 
+            const customerCheckResponse = await fetch(
+              `https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}&select=id,credit_used`, 
               {
+                method: "GET",
                 headers: {
                   "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
                   "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
                   "Content-Type": "application/json"
                 }
               }
-            ).then(res => res.json());
+            );
+            
+            if (!customerCheckResponse.ok) {
+              throw new Error(`Failed to fetch customer data: ${await customerCheckResponse.text()}`);
+            }
+            
+            const customerData = await customerCheckResponse.json();
             
             // Check if customer data was found
             if (!customerData || !Array.isArray(customerData) || customerData.length === 0) {
