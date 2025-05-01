@@ -57,6 +57,15 @@ export const usePaymentGateway = () => {
       }
       
       console.log("Payment intent created:", data);
+      
+      // If payment was processed successfully in test mode, show a success toast
+      if (data.paymentDetails?.updated) {
+        toast({
+          title: "Payment Successful",
+          description: "Your payment has been processed successfully (test mode)",
+        });
+      }
+      
       return data as PaymentResponse;
     } catch (err: any) {
       setError(err.message || 'Failed to create payment intent');

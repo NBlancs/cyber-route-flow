@@ -98,30 +98,32 @@ export function useCustomerData() {
             console.log("Payment status check result:", statusResult);
             
             // Now confirm the payment with PayMongo
-            const result = await confirmPayment({
-              paymentIntentId: paymentId,
-              amount: statusResult?.amount || 0,
-              customerId: statusResult?.customerId,
-              description: "Payment confirmation"
-            });
-            
-            if (result && result.paymentDetails?.updated) {
-              console.log("Payment updated successfully:", result);
-              // Show success toast
-              toast({
-                title: "Payment Processed",
-                description: "Your payment has been processed and credit has been updated.",
+            if (statusResult && statusResult.paymentDetails) {
+              const result = await confirmPayment({
+                paymentIntentId: paymentId,
+                amount: statusResult.paymentDetails.amount || 0,
+                customerId: statusResult.paymentDetails.customerId,
+                description: "Payment confirmation"
               });
-              // Refresh customer data to show updated credit information
-              fetchCustomers();
-            } else {
-              console.log("Payment confirmation received but no update needed:", result);
-              toast({
-                title: "Payment Processing",
-                description: "Your payment is being processed.",
-              });
-              // Still refresh to show latest data
-              fetchCustomers();
+              
+              if (result && result.paymentDetails?.updated) {
+                console.log("Payment updated successfully:", result);
+                // Show success toast
+                toast({
+                  title: "Payment Processed",
+                  description: "Your payment has been processed and credit has been updated.",
+                });
+                // Refresh customer data to show updated credit information
+                fetchCustomers();
+              } else {
+                console.log("Payment confirmation received but no update needed:", result);
+                toast({
+                  title: "Payment Processing",
+                  description: "Your payment is being processed.",
+                });
+                // Still refresh to show latest data
+                fetchCustomers();
+              }
             }
           } catch (error) {
             console.error("Error confirming payment:", error);

@@ -107,9 +107,10 @@ serve(async (req) => {
         
         // In test environment, immediately update the customer's credit_used
         // This simulates the payment being processed without waiting for confirmation
-        if (IS_TEST_ENVIRONMENT && paymentData.customerId) {
+        let paymentUpdated = false;
+        if (paymentData.customerId) {
           try {
-            console.log(`TEST ENVIRONMENT: Immediately processing payment for customer: ${paymentData.customerId}`);
+            console.log(`Updating payment for customer: ${paymentData.customerId}`);
             
             // Get current customer data
             const { data: customerData, error: fetchError } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${paymentData.customerId}&select=credit_used`, {
@@ -127,7 +128,7 @@ serve(async (req) => {
             const currentCreditUsed = customerData[0].credit_used || 0;
             const newCreditUsed = Math.max(0, currentCreditUsed - paymentData.amount);
             
-            console.log(`TEST ENVIRONMENT: Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
+            console.log(`Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
             
             // Update the customer record
             const updateResponse = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${paymentData.customerId}`, {
@@ -145,14 +146,16 @@ serve(async (req) => {
             
             if (!updateResponse.ok) {
               const updateError = await updateResponse.text();
-              console.error(`TEST ENVIRONMENT: Database update error: ${updateError}`);
+              console.error(`Database update error: ${updateError}`);
               throw new Error(`Failed to update customer credit: ${updateError}`);
             } else {
-              console.log("TEST ENVIRONMENT: Customer credit updated successfully");
+              console.log("Customer credit updated successfully");
+              paymentUpdated = true;
             }
-          } catch (testError) {
-            console.error("TEST ENVIRONMENT: Error updating credit:", testError);
-            // Even if there's an error, we still want to return the checkout URL
+          } catch (updateError) {
+            console.error("Error updating credit:", updateError);
+            // We don't throw here - we still want to return the checkout URL
+            // even if the update fails
           }
         }
         
@@ -163,6 +166,13 @@ serve(async (req) => {
               paymentIntentId: paymentIntentId,
               amount: paymentData.amount,
               customerId: paymentData.customerId
+            },
+            paymentDetails: {
+              status: "pending",
+              amount: paymentData.amount,
+              customerId: paymentData.customerId,
+              paymentIntentId: paymentIntentId,
+              updated: paymentUpdated
             }
           }),
           {
@@ -188,10 +198,10 @@ serve(async (req) => {
       }
     } else if (action === "confirm-payment") {
       // Retrieve and process the payment status
-      const { paymentIntentId, customerId } = paymentData;
+      const { paymentIntentId, customerId, amount } = paymentData;
 
       try {
-        console.log(`Confirming payment for ID: ${paymentIntentId}, customer: ${customerId}`);
+        console.log(`Confirming payment for ID: ${paymentIntentId}, customer: ${customerId}, amount: ${amount}`);
         
         // Retrieve the payment intent status
         const paymentIntentResponse = await fetch(`${PAYMONGO_API_URL}/payment_intents/${paymentIntentId}`, {
@@ -209,54 +219,61 @@ serve(async (req) => {
         }
         
         const status = paymentIntentData.data.attributes.status;
-        const amount = paymentData.amount || paymentIntentData.data.attributes.amount / 100;
+        const paymentAmount = amount || paymentIntentData.data.attributes.amount / 100;
         const paymentMetadata = paymentIntentData.data.attributes.metadata || {};
         const retrievedCustomerId = paymentMetadata.customer_id || customerId;
         
-        // If not already processed in test environment and status is pending or succeeded
+        // If status is pending or succeeded, update customer credit
+        let creditUpdated = false;
         if ((status === "pending" || status === "succeeded") && retrievedCustomerId) {
-          console.log(`Processing ${status} payment: ${retrievedCustomerId}, amount: ${amount}`);
-          
-          // Get current customer data
-          const { data: customerData, error: fetchError } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}&select=credit_used`, {
-            headers: {
-              "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
-              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
-              "Content-Type": "application/json"
+          try {
+            console.log(`Processing ${status} payment: ${retrievedCustomerId}, amount: ${paymentAmount}`);
+            
+            // Get current customer data
+            const { data: customerData, error: fetchError } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}&select=credit_used`, {
+              headers: {
+                "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+                "Content-Type": "application/json"
+              }
+            }).then(res => res.json());
+            
+            if (fetchError || !customerData || customerData.length === 0) {
+              console.error("Failed to fetch customer data:", fetchError || "Customer not found");
+              throw new Error(`Failed to fetch customer data: ${fetchError?.message || "Customer not found"}`);
             }
-          }).then(res => res.json());
-          
-          if (fetchError || !customerData || customerData.length === 0) {
-            console.error("Failed to fetch customer data:", fetchError || "Customer not found");
-            throw new Error(`Failed to fetch customer data: ${fetchError?.message || "Customer not found"}`);
+            
+            const currentCreditUsed = customerData[0].credit_used || 0;
+            const newCreditUsed = Math.max(0, currentCreditUsed - paymentAmount);
+            
+            console.log(`Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
+            
+            // Update the customer record
+            const updateResponse = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}`, {
+              method: "PATCH",
+              headers: {
+                "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal"
+              },
+              body: JSON.stringify({
+                credit_used: newCreditUsed
+              })
+            });
+            
+            if (!updateResponse.ok) {
+              const updateError = await updateResponse.text();
+              console.error(`Database update error: ${updateError}`);
+              throw new Error(`Failed to update customer credit: ${updateError}`);
+            }
+            
+            console.log("Customer credit updated successfully");
+            creditUpdated = true;
+          } catch (updateError) {
+            console.error("Error updating credit:", updateError);
+            // We still want to return payment status even if update fails
           }
-          
-          const currentCreditUsed = customerData[0].credit_used || 0;
-          const newCreditUsed = Math.max(0, currentCreditUsed - amount);
-          
-          console.log(`Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
-          
-          // Update the customer record
-          const updateResponse = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}`, {
-            method: "PATCH",
-            headers: {
-              "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
-              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
-              "Content-Type": "application/json",
-              "Prefer": "return=minimal"
-            },
-            body: JSON.stringify({
-              credit_used: newCreditUsed
-            })
-          });
-          
-          if (!updateResponse.ok) {
-            const updateError = await updateResponse.text();
-            console.error(`Database update error: ${updateError}`);
-            throw new Error(`Failed to update customer credit: ${updateError}`);
-          }
-          
-          console.log("Customer credit updated successfully");
         } else {
           console.log(`Payment status ${status} does not require updating credit or customer ID is missing`);
         }
@@ -267,10 +284,10 @@ serve(async (req) => {
             message: status === "succeeded" ? "Payment confirmed" : "Payment is being processed",
             paymentDetails: {
               status,
-              amount,
+              amount: paymentAmount,
               customerId: retrievedCustomerId,
               paymentIntentId,
-              updated: status === "succeeded" || (IS_TEST_ENVIRONMENT && status === "pending")
+              updated: creditUpdated
             }
           }),
           {
@@ -293,36 +310,42 @@ serve(async (req) => {
       const event = paymentData.data;
       
       // Implement webhook handling for payment confirmations
-      if (event && (event.type === "payment.paid" || (IS_TEST_ENVIRONMENT && event.type === "payment.pending"))) {
+      if (event && (event.type === "payment.paid" || event.type === "payment.pending")) {
         const paymentData = event.data;
         const metadata = paymentData.attributes.metadata;
         
         if (metadata && metadata.customer_id) {
-          // Update customer credit in database
-          const { data, error } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}&select=credit_used`, {
-            headers: {
-              "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
-              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
-              "Content-Type": "application/json"
-            }
-          }).then(res => res.json());
-          
-          if (!error && data && data.length > 0) {
-            const amount = paymentData.attributes.amount / 100; // Convert from cents
-            const newCreditUsed = Math.max(0, data[0].credit_used - amount);
-            
-            await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}`, {
-              method: "PATCH",
+          try {
+            // Update customer credit in database
+            const { data, error } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}&select=credit_used`, {
               headers: {
                 "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
                 "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal"
-              },
-              body: JSON.stringify({
-                credit_used: newCreditUsed
-              })
-            });
+                "Content-Type": "application/json"
+              }
+            }).then(res => res.json());
+            
+            if (!error && data && data.length > 0) {
+              const amount = paymentData.attributes.amount / 100; // Convert from cents
+              const newCreditUsed = Math.max(0, data[0].credit_used - amount);
+              
+              await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${metadata.customer_id}`, {
+                method: "PATCH",
+                headers: {
+                  "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+                  "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+                  "Content-Type": "application/json",
+                  "Prefer": "return=minimal"
+                },
+                body: JSON.stringify({
+                  credit_used: newCreditUsed
+                })
+              });
+              
+              console.log(`Webhook updated customer credit: ${metadata.customer_id}, amount: ${amount}`);
+            }
+          } catch (error) {
+            console.error("Error processing webhook:", error);
           }
         }
       }
@@ -361,10 +384,13 @@ serve(async (req) => {
         
         return new Response(
           JSON.stringify({ 
-            status,
-            customerId,
-            amount,
-            paymentIntentId,
+            paymentDetails: {
+              status,
+              customerId,
+              amount,
+              paymentIntentId,
+              updated: false
+            },
             metadata
           }),
           {

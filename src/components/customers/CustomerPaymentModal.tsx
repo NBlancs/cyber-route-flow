@@ -54,25 +54,33 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
       const result = await createPaymentIntent(paymentData);
       
       if (result && result.data && result.data.checkoutUrl) {
-        // In test environment, the credit_used is already updated, show toast
-        toast({
-          title: "Payment Processing",
-          description: "Your payment is being processed. Customer credit has been updated in test mode.",
-        });
-        
         // Close the modal before redirecting
         onClose();
         
-        // Small delay to allow the modal to close
-        setTimeout(() => {
-          // Redirect to the payment checkout URL
-          window.open(result.data.checkoutUrl, "_blank");
+        // If in test mode and the credit has been updated already, show a success toast
+        if (result.paymentDetails?.updated) {
+          toast({
+            title: "Payment Processed (Test Mode)",
+            description: "Your payment has been processed and customer credit has been updated.",
+          });
           
-          // Trigger the success callback to refresh customer data
+          // Trigger success callback to refresh customer data
           if (onSuccess) {
             onSuccess();
           }
-        }, 100);
+        } else {
+          // Show a processing toast
+          toast({
+            title: "Payment Processing",
+            description: "Your payment is being processed. Redirecting to payment gateway...",
+          });
+          
+          // Small delay to allow the toast to be seen
+          setTimeout(() => {
+            // Redirect to the payment checkout URL
+            window.open(result.data.checkoutUrl, "_blank");
+          }, 1500);
+        }
       } else {
         throw new Error("Failed to create payment checkout URL");
       }
