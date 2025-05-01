@@ -1,11 +1,13 @@
+
 import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import CustomerList from "@/components/CustomerList";
+import ShipmentTracker from "@/components/ShipmentTracker";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCustomerData } from "@/hooks/useCustomerData";
-import { CustomerForm } from "@/components/customers/CustomerForm";
+import { useShipmentData } from "@/hooks/useShipmentData";
+import { ShipmentForm } from "@/components/shipping/ShipmentForm";
+import { Shipment } from "@/components/shipping/ShipmentTableRow";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -15,52 +17,51 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Customer } from "@/types/customer";
 
-export default function CustomersPage() {
-  const { customers, loading, fetchCustomers } = useCustomerData();
-  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
-  const [isEditCustomerOpen, setIsEditCustomerOpen] = useState(false);
-  const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
-  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
-  const [view, setView] = useState<'grid' | 'table'>('grid');
+export default function ShipmentsPage() {
+  const { shipments, loading, fetchShipments } = useShipmentData();
+  const [isAddShipmentOpen, setIsAddShipmentOpen] = useState(false);
+  const [isEditShipmentOpen, setIsEditShipmentOpen] = useState(false);
+  const [shipmentToEdit, setShipmentToEdit] = useState<Shipment | null>(null);
+  const [shipmentToDelete, setShipmentToDelete] = useState<Shipment | null>(null);
   const { toast } = useToast();
-
-  const activeCustomers = customers.filter(c => c.active_shipments && c.active_shipments > 0);
-  const overdueCustomers = customers.filter(c => c.credit_status === 'exceeded');
   
-  const handleEditCustomer = (customer: Customer) => {
-    setCustomerToEdit(customer);
-    setIsEditCustomerOpen(true);
+  // Count shipments by status
+  const inTransitCount = shipments.filter(s => s.status === 'in-transit').length;
+  const processingCount = shipments.filter(s => s.status === 'processing').length;
+  const deliveredCount = shipments.filter(s => s.status === 'delivered').length;
+  
+  const handleEditShipment = (shipment: Shipment) => {
+    setShipmentToEdit(shipment);
+    setIsEditShipmentOpen(true);
   };
 
-  const handleDeleteCustomer = async () => {
-    if (!customerToDelete) return;
+  const handleDeleteShipment = async () => {
+    if (!shipmentToDelete) return;
 
     try {
       const { error } = await supabase
-        .from('customers')
+        .from('shipments')
         .delete()
-        .eq('id', customerToDelete.id);
+        .eq('id', shipmentToDelete.id);
 
       if (error) throw error;
 
       toast({
-        title: "Customer Deleted",
-        description: `${customerToDelete.name} has been deleted successfully.`,
+        title: "Shipment Deleted",
+        description: `Shipment ${shipmentToDelete.tracking_id} has been deleted successfully.`,
       });
       
-      fetchCustomers(); // Refresh the customer list
-      setCustomerToDelete(null);
+      fetchShipments(); // Refresh the shipment list
+      setShipmentToDelete(null);
     } catch (error) {
-      console.error("Error deleting customer:", error);
+      console.error("Error deleting shipment:", error);
       toast({
         title: "Error",
-        description: "Failed to delete customer. It may have associated shipments.",
+        description: "Failed to delete shipment.",
         variant: "destructive",
       });
     }
@@ -71,11 +72,11 @@ export default function CustomersPage() {
       <div className="mb-8">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-1">Customers</h1>
-            <p className="text-gray-400">Manage your customer relationships and credit limits</p>
+            <h1 className="text-3xl font-bold text-white mb-1">Shipments</h1>
+            <p className="text-gray-400">Track and manage all your active shipments</p>
           </div>
-          <Button onClick={() => setIsAddCustomerOpen(true)}>
-            <Plus size={16} className="mr-1" /> Add Customer
+          <Button onClick={() => setIsAddShipmentOpen(true)}>
+            <Plus size={16} className="mr-1" /> Create Shipment
           </Button>
         </div>
       </div>
@@ -83,68 +84,68 @@ export default function CustomersPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+            <CardTitle className="text-sm font-medium">Processing</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{customers.length}</div>
+            <div className="text-2xl font-bold">{processingCount}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active Customers</CardTitle>
+            <CardTitle className="text-sm font-medium">In Transit</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activeCustomers.length}</div>
+            <div className="text-2xl font-bold">{inTransitCount}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Overdue Customers</CardTitle>
+            <CardTitle className="text-sm font-medium">Delivered</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-500">{overdueCustomers.length}</div>
+            <div className="text-2xl font-bold text-green-500">{deliveredCount}</div>
           </CardContent>
         </Card>
       </div>
       
-      <CustomerList 
-        onEdit={handleEditCustomer} 
-        onDelete={(customer) => setCustomerToDelete(customer)}
+      <ShipmentTracker 
+        onEdit={handleEditShipment} 
+        onDelete={(shipment) => setShipmentToDelete(shipment)}
       />
 
-      {/* Add Customer Modal */}
-      <CustomerForm 
-        isOpen={isAddCustomerOpen} 
-        onClose={() => setIsAddCustomerOpen(false)}
-        onSave={fetchCustomers}
+      {/* Add Shipment Modal */}
+      <ShipmentForm 
+        isOpen={isAddShipmentOpen} 
+        onClose={() => setIsAddShipmentOpen(false)}
+        onSave={fetchShipments}
       />
 
-      {/* Edit Customer Modal */}
-      {customerToEdit && (
-        <CustomerForm 
-          customer={customerToEdit}
-          isOpen={isEditCustomerOpen} 
+      {/* Edit Shipment Modal */}
+      {shipmentToEdit && (
+        <ShipmentForm 
+          shipment={shipmentToEdit}
+          isOpen={isEditShipmentOpen} 
           onClose={() => {
-            setIsEditCustomerOpen(false);
-            setCustomerToEdit(null);
+            setIsEditShipmentOpen(false);
+            setShipmentToEdit(null);
           }}
-          onSave={fetchCustomers}
+          onSave={fetchShipments}
         />
       )}
 
-      {/* Delete Customer Confirmation */}
-      <AlertDialog open={!!customerToDelete} onOpenChange={(open) => !open && setCustomerToDelete(null)}>
+      {/* Delete Shipment Confirmation */}
+      <AlertDialog open={!!shipmentToDelete} onOpenChange={(open) => !open && setShipmentToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the customer
-              "{customerToDelete?.name}" and all associated data.
+              This action cannot be undone. This will permanently delete shipment 
+              "{shipmentToDelete?.tracking_id}" and all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCustomer} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDeleteShipment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               <Trash className="mr-2 h-4 w-4" />
               Delete
             </AlertDialogAction>

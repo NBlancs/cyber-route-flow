@@ -15,6 +15,8 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-6">
           <NavLink to="/" icon={<Map size={16} />} label="Map" />
           <NavLink to="/shipments" icon={<Package size={16} />} label="Shipments" />
+          <NavLink to="/customers" icon={<Package size={16} />} label="Customers" />
+
             <Button 
             onClick={() => window.location.href = "/auth"} 
             variant="ghost" 
