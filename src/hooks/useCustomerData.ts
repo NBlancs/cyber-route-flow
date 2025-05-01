@@ -9,7 +9,7 @@ export function useCustomerData() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { confirmPayment } = usePaymentGateway();
+  const { confirmPayment, checkPaymentStatus } = usePaymentGateway();
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -93,11 +93,15 @@ export function useCustomerData() {
         
         if (paymentStatus === 'success' || paymentStatus === 'pending') {
           try {
-            // Confirm the payment with PayMongo
-            console.log("Confirming payment:", paymentId);
+            // First check payment status
+            const statusResult = await checkPaymentStatus(paymentId);
+            console.log("Payment status check result:", statusResult);
+            
+            // Now confirm the payment with PayMongo
             const result = await confirmPayment({
               paymentIntentId: paymentId,
-              amount: 0, // Will be fetched from the payment intent
+              amount: statusResult?.amount || 0,
+              customerId: statusResult?.customerId,
               description: "Payment confirmation"
             });
             

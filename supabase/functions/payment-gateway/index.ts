@@ -31,6 +31,9 @@ serve(async (req) => {
 
     if (action === "create-payment-intent") {
       try {
+        // Log the payload received for debugging
+        console.log("Creating payment intent with payload:", JSON.stringify(paymentData));
+
         // First create a payment intent
         const paymentIntentResponse = await fetch(`${PAYMONGO_API_URL}/payment_intents`, {
           method: "POST",
@@ -143,11 +146,13 @@ serve(async (req) => {
             if (!updateResponse.ok) {
               const updateError = await updateResponse.text();
               console.error(`TEST ENVIRONMENT: Database update error: ${updateError}`);
+              throw new Error(`Failed to update customer credit: ${updateError}`);
             } else {
               console.log("TEST ENVIRONMENT: Customer credit updated successfully");
             }
           } catch (testError) {
             console.error("TEST ENVIRONMENT: Error updating credit:", testError);
+            // Even if there's an error, we still want to return the checkout URL
           }
         }
         
@@ -186,6 +191,8 @@ serve(async (req) => {
       const { paymentIntentId, customerId } = paymentData;
 
       try {
+        console.log(`Confirming payment for ID: ${paymentIntentId}, customer: ${customerId}`);
+        
         // Retrieve the payment intent status
         const paymentIntentResponse = await fetch(`${PAYMONGO_API_URL}/payment_intents/${paymentIntentId}`, {
           method: "GET",
@@ -203,13 +210,15 @@ serve(async (req) => {
         
         const status = paymentIntentData.data.attributes.status;
         const amount = paymentData.amount || paymentIntentData.data.attributes.amount / 100;
+        const paymentMetadata = paymentIntentData.data.attributes.metadata || {};
+        const retrievedCustomerId = paymentMetadata.customer_id || customerId;
         
         // If not already processed in test environment and status is pending or succeeded
-        if ((status === "pending" || status === "succeeded") && customerId && (!IS_TEST_ENVIRONMENT || status === "succeeded")) {
-          console.log(`Processing ${status} payment: ${customerId}, amount: ${amount}`);
+        if ((status === "pending" || status === "succeeded") && retrievedCustomerId) {
+          console.log(`Processing ${status} payment: ${retrievedCustomerId}, amount: ${amount}`);
           
           // Get current customer data
-          const { data: customerData, error: fetchError } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${customerId}&select=credit_used`, {
+          const { data: customerData, error: fetchError } = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}&select=credit_used`, {
             headers: {
               "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
               "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
@@ -218,6 +227,7 @@ serve(async (req) => {
           }).then(res => res.json());
           
           if (fetchError || !customerData || customerData.length === 0) {
+            console.error("Failed to fetch customer data:", fetchError || "Customer not found");
             throw new Error(`Failed to fetch customer data: ${fetchError?.message || "Customer not found"}`);
           }
           
@@ -227,7 +237,7 @@ serve(async (req) => {
           console.log(`Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
           
           // Update the customer record
-          const updateResponse = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${customerId}`, {
+          const updateResponse = await fetch(`https://hrpevihxkuqwdbvcdmqx.supabase.co/rest/v1/customers?id=eq.${retrievedCustomerId}`, {
             method: "PATCH",
             headers: {
               "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
@@ -242,10 +252,13 @@ serve(async (req) => {
           
           if (!updateResponse.ok) {
             const updateError = await updateResponse.text();
-            throw new Error(`Database update error: ${updateError}`);
+            console.error(`Database update error: ${updateError}`);
+            throw new Error(`Failed to update customer credit: ${updateError}`);
           }
           
           console.log("Customer credit updated successfully");
+        } else {
+          console.log(`Payment status ${status} does not require updating credit or customer ID is missing`);
         }
         
         return new Response(
@@ -255,7 +268,7 @@ serve(async (req) => {
             paymentDetails: {
               status,
               amount,
-              customerId,
+              customerId: retrievedCustomerId,
               paymentIntentId,
               updated: status === "succeeded" || (IS_TEST_ENVIRONMENT && status === "pending")
             }
@@ -321,6 +334,54 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
+    } else if (action === "check-payment-status") {
+      // Check the status of a payment
+      const { paymentIntentId } = paymentData;
+      
+      try {
+        console.log(`Checking payment status for ID: ${paymentIntentId}`);
+        
+        const paymentIntentResponse = await fetch(`${PAYMONGO_API_URL}/payment_intents/${paymentIntentId}`, {
+          method: "GET",
+          headers: {
+            "Authorization": authHeader,
+          }
+        });
+        
+        const paymentIntentData = await paymentIntentResponse.json();
+        
+        if (!paymentIntentResponse.ok) {
+          throw new Error(paymentIntentData.errors?.[0]?.detail || "Failed to retrieve payment intent");
+        }
+        
+        const status = paymentIntentData.data.attributes.status;
+        const metadata = paymentIntentData.data.attributes.metadata || {};
+        const customerId = metadata.customer_id;
+        const amount = paymentIntentData.data.attributes.amount / 100;
+        
+        return new Response(
+          JSON.stringify({ 
+            status,
+            customerId,
+            amount,
+            paymentIntentId,
+            metadata
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      } catch (apiError) {
+        console.error("PayMongo status check error:", apiError);
+        return new Response(
+          JSON.stringify({ error: apiError.message || "Payment status check error" }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          }
+        );
+      }
     }
 
     return new Response(

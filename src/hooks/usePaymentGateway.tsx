@@ -108,6 +108,28 @@ export const usePaymentGateway = () => {
     }
   };
 
+  const checkPaymentStatus = async (paymentIntentId: string): Promise<PaymentResponse | null> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('payment-gateway', {
+        body: {
+          action: 'check-payment-status',
+          paymentData: { paymentIntentId },
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      return data as PaymentResponse;
+    } catch (err: any) {
+      setError(err.message || 'Failed to check payment status');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const processWebhook = async (webhookData: any) => {
     setLoading(true);
     setError(null);
@@ -133,6 +155,7 @@ export const usePaymentGateway = () => {
   return {
     createPaymentIntent,
     confirmPayment,
+    checkPaymentStatus,
     processWebhook,
     loading,
     error,
