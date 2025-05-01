@@ -1,10 +1,113 @@
-
 // Import from the latest Deno standard library
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const PAYMONGO_API_URL = "https://api.paymongo.com/v1";
 const IS_TEST_ENVIRONMENT = true; // Set to false in production
+
+// Create a debug log helper to make logs more consistent
+function debugLog(context, message, data = null) {
+  const logMessage = `[PaymentGateway] ${context}: ${message}`;
+  if (data) {
+    console.log(logMessage, typeof data === 'string' ? data : JSON.stringify(data, null, 2));
+  } else {
+    console.log(logMessage);
+  }
+}
+
+// Add this new action to retrieve all payments from PayMongo
+async function retrieveAllPayments(authHeader, params = {}) {
+  try {
+    // Build query string from parameters
+    const queryParams = new URLSearchParams();
+    
+    // Always set a default limit if not provided
+    if (params.limit) {
+      queryParams.append('limit', params.limit.toString());
+    } else {
+      queryParams.append('limit', '10'); // Default limit
+    }
+    
+    // Handle pagination parameters
+    if (params.starting_after) queryParams.append('starting_after', params.starting_after);
+    if (params.ending_before) queryParams.append('ending_before', params.ending_before);
+    
+    // These are alternative pagination mechanisms - use only if needed
+    // if (params.before) queryParams.append('before', params.before);
+    // if (params.after) queryParams.append('after', params.after);
+    
+    // Add created field for date filtering if needed
+    // if (params.created && Object.keys(params.created).length > 0) {
+    //   Object.entries(params.created).forEach(([key, value]) => {
+    //     queryParams.append(`created[${key}]`, value.toString());
+    //   });
+    // }
+    
+    const queryString = queryParams.toString();
+    const url = `${PAYMONGO_API_URL}/payments${queryString ? `?${queryString}` : ''}`;
+    
+    debugLog("FETCH", `Retrieving payments from PayMongo: ${url}`);
+    
+    // Make the request to PayMongo
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Authorization": authHeader,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      }
+    });
+    
+    debugLog("RESPONSE", `PayMongo response status: ${response.status}`);
+    
+    // Get the raw response text for error handling
+    const responseText = await response.text();
+    
+    // Handle error responses
+    if (!response.ok) {
+      let errorDetail = "Unknown error";
+      
+      try {
+        const errorData = JSON.parse(responseText);
+        errorDetail = errorData.errors?.[0]?.detail || `Failed to retrieve payments: ${response.status}`;
+        debugLog("ERROR", `PayMongo API error details: ${errorDetail}`);
+      } catch (parseError) {
+        errorDetail = responseText || `Failed to retrieve payments: ${response.status}`;
+        debugLog("ERROR", `Failed to parse error response: ${responseText}`);
+      }
+      
+      throw new Error(errorDetail);
+    }
+    
+    let data;
+    try {
+      // Parse the successful response
+      data = JSON.parse(responseText);
+      
+      // Add debug information about the response
+      debugLog("SUCCESS", `Retrieved ${data.data?.length || 0} payments, has_more: ${data.has_more}`);
+      
+      if (data.data?.length === 0) {
+        debugLog("INFO", "No payments found in the response");
+      } else if (data.data?.length > 0) {
+        debugLog("INFO", `First payment ID: ${data.data[0].id}, Last payment ID: ${data.data[data.data.length-1].id}`);
+      }
+      
+      // Ensure the response has the expected format
+      return {
+        data: data.data || [],
+        has_more: data.has_more || false
+      };
+    } catch (parseError) {
+      debugLog("ERROR", `Failed to parse success response: ${responseText}`);
+      throw new Error("Failed to parse PayMongo response");
+    }
+  } catch (error) {
+    debugLog("ERROR", `Error retrieving payments: ${error.message}`);
+    throw error;
+  }
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -33,7 +136,7 @@ serve(async (req) => {
     if (action === "create-payment-intent") {
       try {
         // Log the payload received for debugging
-        console.log("Creating payment intent with payload:", JSON.stringify(paymentData));
+        debugLog("CREATE_PAYMENT_INTENT", "Creating payment intent with payload", paymentData);
 
         // First create a payment intent
         const paymentIntentResponse = await fetch(`${PAYMONGO_API_URL}/payment_intents`, {
@@ -60,7 +163,7 @@ serve(async (req) => {
         });
         
         const paymentIntentData = await paymentIntentResponse.json();
-        console.log("Payment intent created:", JSON.stringify(paymentIntentData));
+        debugLog("CREATE_PAYMENT_INTENT", "Payment intent created", paymentIntentData);
         
         if (!paymentIntentResponse.ok) {
           throw new Error(paymentIntentData.errors?.[0]?.detail || "Failed to create payment intent");
@@ -97,7 +200,7 @@ serve(async (req) => {
         });
         
         const paymentMethodData = await paymentMethodResponse.json();
-        console.log("Payment link created:", JSON.stringify(paymentMethodData));
+        debugLog("CREATE_PAYMENT_LINK", "Payment link created", paymentMethodData);
         
         if (!paymentMethodResponse.ok) {
           throw new Error(paymentMethodData.errors?.[0]?.detail || "Failed to create payment link");
@@ -111,7 +214,7 @@ serve(async (req) => {
         let paymentUpdated = false;
         if (paymentData.customerId) {
           try {
-            console.log(`Checking if customer exists before updating: ${paymentData.customerId}`);
+            debugLog("UPDATE_CREDIT", `Checking if customer exists before updating: ${paymentData.customerId}`);
             
             // First check if the customer exists by querying the ID directly
             const customerCheckResponse = await fetch(
@@ -134,15 +237,15 @@ serve(async (req) => {
             
             // Check if customer data was found
             if (!customerData || !Array.isArray(customerData) || customerData.length === 0) {
-              console.error(`Customer not found with ID: ${paymentData.customerId}`);
+              debugLog("UPDATE_CREDIT", `Customer not found with ID: ${paymentData.customerId}`);
               throw new Error(`Customer not found with ID: ${paymentData.customerId}`);
             }
             
-            console.log(`Customer found:`, JSON.stringify(customerData));
+            debugLog("UPDATE_CREDIT", "Customer found", customerData);
             const currentCreditUsed = customerData[0]?.credit_used || 0;
             const newCreditUsed = Math.max(0, currentCreditUsed - paymentData.amount);
             
-            console.log(`Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
+            debugLog("UPDATE_CREDIT", `Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
             
             // Update the customer record
             const updateResponse = await fetch(
@@ -163,14 +266,14 @@ serve(async (req) => {
             
             if (!updateResponse.ok) {
               const updateError = await updateResponse.text();
-              console.error(`Database update error: ${updateError}`);
+              debugLog("UPDATE_CREDIT", `Database update error: ${updateError}`);
               throw new Error(`Failed to update customer credit: ${updateError}`);
             } else {
-              console.log("Customer credit updated successfully");
+              debugLog("UPDATE_CREDIT", "Customer credit updated successfully");
               paymentUpdated = true;
             }
           } catch (updateError) {
-            console.error("Error updating credit:", updateError);
+            debugLog("UPDATE_CREDIT", "Error updating credit", updateError);
             // We don't throw here - we still want to return the checkout URL
             // even if the update fails
           }
@@ -204,7 +307,7 @@ serve(async (req) => {
           }
         );
       } catch (apiError) {
-        console.error("PayMongo API error:", apiError);
+        debugLog("CREATE_PAYMENT_INTENT", "PayMongo API error", apiError);
         return new Response(
           JSON.stringify({ error: apiError.message || "Payment gateway error" }),
           { 
@@ -218,7 +321,7 @@ serve(async (req) => {
       const { paymentIntentId, customerId, amount } = paymentData;
 
       try {
-        console.log(`Confirming payment for ID: ${paymentIntentId}, customer: ${customerId}, amount: ${amount}`);
+        debugLog("CONFIRM_PAYMENT", `Confirming payment for ID: ${paymentIntentId}, customer: ${customerId}, amount: ${amount}`);
         
         // Retrieve the payment intent status
         const paymentIntentResponse = await fetch(`${PAYMONGO_API_URL}/payment_intents/${paymentIntentId}`, {
@@ -229,7 +332,7 @@ serve(async (req) => {
         });
         
         const paymentIntentData = await paymentIntentResponse.json();
-        console.log("Payment intent retrieved:", JSON.stringify(paymentIntentData));
+        debugLog("CONFIRM_PAYMENT", "Payment intent retrieved", paymentIntentData);
         
         if (!paymentIntentResponse.ok) {
           throw new Error(paymentIntentData.errors?.[0]?.detail || "Failed to retrieve payment intent");
@@ -244,7 +347,7 @@ serve(async (req) => {
         let creditUpdated = false;
         if ((status === "pending" || status === "succeeded") && retrievedCustomerId) {
           try {
-            console.log(`Processing ${status} payment: ${retrievedCustomerId}, amount: ${paymentAmount}`);
+            debugLog("CONFIRM_PAYMENT", `Processing ${status} payment: ${retrievedCustomerId}, amount: ${paymentAmount}`);
             
             // First check if the customer exists by querying the ID directly
             const customerCheckResponse = await fetch(
@@ -267,14 +370,14 @@ serve(async (req) => {
             
             // Check if customer data was found
             if (!customerData || !Array.isArray(customerData) || customerData.length === 0) {
-              console.error(`Customer not found with ID: ${retrievedCustomerId}`);
+              debugLog("CONFIRM_PAYMENT", `Customer not found with ID: ${retrievedCustomerId}`);
               throw new Error(`Customer not found with ID: ${retrievedCustomerId}`);
             }
             
             const currentCreditUsed = customerData[0].credit_used || 0;
             const newCreditUsed = Math.max(0, currentCreditUsed - paymentAmount);
             
-            console.log(`Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
+            debugLog("CONFIRM_PAYMENT", `Updating credit: Current: ${currentCreditUsed}, New: ${newCreditUsed}`);
             
             // Update the customer record
             const updateResponse = await fetch(
@@ -295,18 +398,18 @@ serve(async (req) => {
             
             if (!updateResponse.ok) {
               const updateError = await updateResponse.text();
-              console.error(`Database update error: ${updateError}`);
+              debugLog("CONFIRM_PAYMENT", `Database update error: ${updateError}`);
               throw new Error(`Failed to update customer credit: ${updateError}`);
             }
             
-            console.log("Customer credit updated successfully");
+            debugLog("CONFIRM_PAYMENT", "Customer credit updated successfully");
             creditUpdated = true;
           } catch (updateError) {
-            console.error("Error updating credit:", updateError);
+            debugLog("CONFIRM_PAYMENT", "Error updating credit", updateError);
             // We still want to return payment status even if update fails
           }
         } else {
-          console.log(`Payment status ${status} does not require updating credit or customer ID is missing`);
+          debugLog("CONFIRM_PAYMENT", `Payment status ${status} does not require updating credit or customer ID is missing`);
         }
         
         return new Response(
@@ -327,7 +430,7 @@ serve(async (req) => {
           }
         );
       } catch (apiError) {
-        console.error("PayMongo confirmation error:", apiError);
+        debugLog("CONFIRM_PAYMENT", "PayMongo confirmation error", apiError);
         return new Response(
           JSON.stringify({ error: apiError.message || "Payment confirmation error" }),
           { 
@@ -368,7 +471,7 @@ serve(async (req) => {
             
             // Check if customer data was found
             if (!customerData || !Array.isArray(customerData) || customerData.length === 0) {
-              console.error(`Customer not found with ID: ${metadata.customer_id}`);
+              debugLog("WEBHOOK", `Customer not found with ID: ${metadata.customer_id}`);
               throw new Error(`Customer not found with ID: ${metadata.customer_id}`);
             }
             
@@ -391,9 +494,9 @@ serve(async (req) => {
               }
             );
               
-            console.log(`Webhook updated customer credit: ${metadata.customer_id}, amount: ${amount}`);
+            debugLog("WEBHOOK", `Webhook updated customer credit: ${metadata.customer_id}, amount: ${amount}`);
           } catch (error) {
-            console.error("Error processing webhook:", error);
+            debugLog("WEBHOOK", "Error processing webhook", error);
           }
         }
       }
@@ -410,7 +513,7 @@ serve(async (req) => {
       const { paymentIntentId } = paymentData;
       
       try {
-        console.log(`Checking payment status for ID: ${paymentIntentId}`);
+        debugLog("CHECK_PAYMENT_STATUS", `Checking payment status for ID: ${paymentIntentId}`);
         
         const paymentIntentResponse = await fetch(`${PAYMONGO_API_URL}/payment_intents/${paymentIntentId}`, {
           method: "GET",
@@ -447,9 +550,37 @@ serve(async (req) => {
           }
         );
       } catch (apiError) {
-        console.error("PayMongo status check error:", apiError);
+        debugLog("CHECK_PAYMENT_STATUS", "PayMongo status check error", apiError);
         return new Response(
           JSON.stringify({ error: apiError.message || "Payment status check error" }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          }
+        );
+      }
+    } else if (action === "list-payments") {
+      // List all payments from PayMongo
+      try {
+        debugLog("LIST_PAYMENTS", "Retrieving all payments from PayMongo");
+        
+        // Extract optional query parameters
+        const queryParams = paymentData?.params || {};
+        
+        // Use the retrieveAllPayments helper function
+        const paymentsData = await retrieveAllPayments(authHeader, queryParams);
+        
+        return new Response(
+          JSON.stringify(paymentsData),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      } catch (apiError) {
+        debugLog("LIST_PAYMENTS", "PayMongo payments retrieval error", apiError);
+        return new Response(
+          JSON.stringify({ error: apiError.message || "Failed to retrieve payment transactions" }),
           { 
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -466,7 +597,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Payment gateway error:", error);
+    debugLog("ERROR", "Payment gateway error", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -8,8 +7,59 @@ interface PaymentData {
   description: string;
   paymentMethodId?: string;
   paymentIntentId?: string;
+  linkId?: string;
   returnUrl?: string;
   customerId?: string;
+  params?: {
+    limit?: number;
+    before?: string;
+    after?: string;
+    starting_after?: string;
+    ending_before?: string;
+  };
+}
+
+interface PaymentTransaction {
+  id: string;
+  type: string;
+  attributes: {
+    amount: number;
+    billing?: {
+      address?: {
+        city?: string;
+        country?: string;
+        line1?: string;
+        line2?: string;
+        postal_code?: string;
+        state?: string;
+      };
+      email?: string;
+      name?: string;
+      phone?: string;
+    };
+    currency: string;
+    description?: string;
+    fee?: number;
+    livemode: boolean;
+    net_amount?: number;
+    payout?: string;
+    source?: {
+      id: string;
+      type: string;
+    };
+    statement_descriptor?: string;
+    status: string;
+    available_at?: number;
+    created_at?: number;
+    paid_at?: number;
+    updated_at?: number;
+    metadata?: Record<string, any>;
+  };
+}
+
+interface PaymentListResponse {
+  data: PaymentTransaction[];
+  has_more: boolean;
 }
 
 interface PaymentResponse {
@@ -174,11 +224,43 @@ export const usePaymentGateway = () => {
     }
   };
 
+  const getPaymentTransactions = async (params?: PaymentData['params']): Promise<PaymentListResponse | null> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log("Retrieving payment transactions with params:", params);
+      
+      const { data, error } = await supabase.functions.invoke('payment-gateway', {
+        body: {
+          action: 'list-payments',
+          paymentData: { params },
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      
+      console.log("Payment transactions retrieved:", data);
+      return data as PaymentListResponse;
+    } catch (err: any) {
+      setError(err.message || 'Failed to retrieve payment transactions');
+      toast({
+        title: "Error Retrieving Payments",
+        description: err.message || "Failed to retrieve payment transactions",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     createPaymentIntent,
     confirmPayment,
     checkPaymentStatus,
     processWebhook,
+    getPaymentTransactions,
     loading,
     error,
   };

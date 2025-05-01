@@ -1,12 +1,13 @@
-
 import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import CustomerList from "@/components/CustomerList";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash } from "lucide-react";
+import { Plus, Trash, CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCustomerData } from "@/hooks/useCustomerData";
 import { CustomerForm } from "@/components/customers/CustomerForm";
+import { PaymentTransactionsTable } from "@/components/customers/PaymentTransactionsTable";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +17,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +28,7 @@ export default function CustomersPage() {
   const [isEditCustomerOpen, setIsEditCustomerOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
-  const [view, setView] = useState<'grid' | 'table'>('grid');
+  const [activeTab, setActiveTab] = useState<string>("customers");
   const { toast } = useToast();
 
   const activeCustomers = customers.filter(c => c.active_shipments && c.active_shipments > 0);
@@ -75,9 +75,11 @@ export default function CustomersPage() {
             <h1 className="text-3xl font-bold text-white mb-1">Customers</h1>
             <p className="text-gray-400">Manage your customer relationships and credit limits</p>
           </div>
-          <Button onClick={() => setIsAddCustomerOpen(true)}>
-            <Plus size={16} className="mr-1" /> Add Customer
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setIsAddCustomerOpen(true)}>
+              <Plus size={16} className="mr-1" /> Add Customer
+            </Button>
+          </div>
         </div>
       </div>
       
@@ -108,10 +110,26 @@ export default function CustomersPage() {
         </Card>
       </div>
       
-      <CustomerList 
-        onEdit={handleEditCustomer} 
-        onDelete={(customer) => setCustomerToDelete(customer)}
-      />
+      <Tabs defaultValue="customers" onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="customers">Customers</TabsTrigger>
+          <TabsTrigger value="transactions">
+            <CreditCard size={16} className="mr-1" />
+            Payment Transactions
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="customers">
+          <CustomerList 
+            onEdit={handleEditCustomer} 
+            onDelete={(customer) => setCustomerToDelete(customer)}
+          />
+        </TabsContent>
+        
+        <TabsContent value="transactions">
+          <PaymentTransactionsTable />
+        </TabsContent>
+      </Tabs>
 
       {/* Add Customer Modal */}
       <CustomerForm 
