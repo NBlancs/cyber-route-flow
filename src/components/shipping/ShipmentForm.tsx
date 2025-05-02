@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { X } from "lucide-react";
 import { useForm, SubmitHandler } from "react-hook-form";
@@ -34,13 +35,20 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Customer } from '@/types/customer';
+import { Shipment } from '@/components/shipping/ShipmentTableRow';
 
 const formSchema = z.object({
   customer_id: z.string().min(1, {
     message: "Please select a customer.",
   }),
-  tracking_number: z.string().min(2, {
-    message: "Tracking number must be at least 2 characters.",
+  tracking_id: z.string().min(2, {
+    message: "Tracking ID must be at least 2 characters.",
+  }),
+  origin: z.string().min(2, {
+    message: "Origin is required",
+  }),
+  destination: z.string().min(2, {
+    message: "Destination is required",
   }),
   weight: z.string().min(1, {
     message: "Weight is required",
@@ -58,53 +66,65 @@ interface ShipmentFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSave?: () => void;
+  shipment?: Shipment;
 }
 
-export function ShipmentForm({ isOpen, onClose, onSave }: ShipmentFormProps) {
+export function ShipmentForm({ isOpen, onClose, onSave, shipment }: ShipmentFormProps) {
   const [customerOptions, setCustomerOptions] = useState<
     { id: string; name: string }[]
   >([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const isEditing = Boolean(shipment);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      customer_id: "",
-      tracking_number: "",
+      customer_id: shipment?.customer_id || "",
+      tracking_id: shipment?.tracking_id || "",
+      origin: shipment?.origin || "",
+      destination: shipment?.destination || "",
       weight: "",
       shipping_fee: "",
-      status: "pending",
+      status: shipment?.status || "pending",
       notes: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const { data, error } = await supabase
-        .from("shipments")
-        .insert([values])
-        .select();
+      if (isEditing) {
+        const { error } = await supabase
+          .from("shipments")
+          .update(values)
+          .eq("id", shipment.id);
 
-      if (error) {
+        if (error) throw error;
+        
         toast({
-          title: "Error",
-          description: "Could not create shipment",
-          variant: "destructive",
+          title: "Success",
+          description: "Shipment updated successfully",
         });
       } else {
+        const { error } = await supabase
+          .from("shipments")
+          .insert([values]);
+
+        if (error) throw error;
+        
         toast({
           title: "Success",
           description: "Shipment created successfully",
         });
-        onSave && onSave();
-        onClose();
       }
+      
+      onSave && onSave();
+      onClose();
     } catch (error) {
       toast({
         title: "Error",
-        description: "Could not create shipment",
+        description: isEditing ? "Could not update shipment" : "Could not create shipment",
         variant: "destructive",
       });
     }
@@ -150,7 +170,7 @@ export function ShipmentForm({ isOpen, onClose, onSave }: ShipmentFormProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px] bg-gray-900 border border-gray-800 text-white">
         <DialogHeader className="flex flex-row items-center justify-between">
-          <DialogTitle>Create Shipment</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Shipment' : 'Create Shipment'}</DialogTitle>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X size={18} />
           </Button>
@@ -183,14 +203,14 @@ export function ShipmentForm({ isOpen, onClose, onSave }: ShipmentFormProps) {
             />
             <FormField
               control={form.control}
-              name="tracking_number"
+              name="tracking_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tracking Number</FormLabel>
+                  <FormLabel>Tracking ID</FormLabel>
                   <FormControl>
                     <Input
                       className="bg-gray-800 border border-gray-700 text-white"
-                      placeholder="Enter tracking number"
+                      placeholder="Enter tracking ID"
                       {...field}
                     />
                   </FormControl>
@@ -198,6 +218,42 @@ export function ShipmentForm({ isOpen, onClose, onSave }: ShipmentFormProps) {
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="origin"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Origin</FormLabel>
+                    <FormControl>
+                      <Input
+                        className="bg-gray-800 border border-gray-700 text-white"
+                        placeholder="Enter origin"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="destination"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Destination</FormLabel>
+                    <FormControl>
+                      <Input
+                        className="bg-gray-800 border border-gray-700 text-white"
+                        placeholder="Enter destination"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -250,7 +306,7 @@ export function ShipmentForm({ isOpen, onClose, onSave }: ShipmentFormProps) {
                     </FormControl>
                     <SelectContent className="bg-gray-800 border border-gray-700 text-white">
                       <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_transit">In Transit</SelectItem>
+                      <SelectItem value="in-transit">In Transit</SelectItem>
                       <SelectItem value="delivered">Delivered</SelectItem>
                       <SelectItem value="failed">Failed</SelectItem>
                     </SelectContent>
@@ -280,7 +336,7 @@ export function ShipmentForm({ isOpen, onClose, onSave }: ShipmentFormProps) {
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit">Create Shipment</Button>
+              <Button type="submit">{isEditing ? 'Update' : 'Create'} Shipment</Button>
             </div>
           </form>
         </Form>
