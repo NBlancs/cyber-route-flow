@@ -60,7 +60,7 @@ export default function DeliveryMap() {
           });
 
           // Add markers for major Philippine cities
-          addPhilippineMarkers();
+          // addPhilippineMarkers();
         });
       } catch (err) {
         console.error("Map initialization error:", err);
@@ -69,42 +69,42 @@ export default function DeliveryMap() {
     }
     
     // Add markers for major cities in the Philippines
-    function addPhilippineMarkers() {
-      if (!map.current) return;
+    // function addPhilippineMarkers() {
+    //   if (!map.current) return;
       
-      const cities = [
-        { name: "Manila", coordinates: [120.9842, 14.5995] as [number, number] },
-        { name: "Cebu", coordinates: [123.8854, 10.3157] as [number, number] },
-        { name: "Davao", coordinates: [125.6194, 7.0707] as [number, number] },
-        { name: "Quezon City", coordinates: [121.0244, 14.6760] as [number, number] },
-        { name: "Zamboanga", coordinates: [122.0790, 6.9214] as [number, number] }
-      ];
+    //   const cities = [
+    //     { name: "Manila", coordinates: [120.9842, 14.5995] as [number, number] },
+    //     { name: "Cebu", coordinates: [123.8854, 10.3157] as [number, number] },
+    //     { name: "Davao", coordinates: [125.6194, 7.0707] as [number, number] },
+    //     { name: "Quezon City", coordinates: [121.0244, 14.6760] as [number, number] },
+    //     { name: "Zamboanga", coordinates: [122.0790, 6.9214] as [number, number] }
+    //   ];
       
-      cities.forEach(city => {
-        // Create a DOM element for the marker
-        const markerEl = document.createElement('div');
-        markerEl.className = 'flex flex-col items-center';
+    //   cities.forEach(city => {
+    //     // Create a DOM element for the marker
+    //     const markerEl = document.createElement('div');
+    //     markerEl.className = 'flex flex-col items-center';
         
-        // Pin element
-        const pinEl = document.createElement('div');
-        pinEl.className = 'text-cyber-neon';
-        pinEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
+    //     // Pin element
+    //     const pinEl = document.createElement('div');
+    //     pinEl.className = 'text-cyber-neon';
+    //     pinEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
         
-        // City name element
-        const nameEl = document.createElement('div');
-        nameEl.className = 'text-xs text-white font-medium bg-black/60 px-1.5 py-0.5 rounded-sm mt-1';
-        nameEl.textContent = city.name;
+    //     // City name element
+    //     const nameEl = document.createElement('div');
+    //     nameEl.className = 'text-xs text-white font-medium bg-black/60 px-1.5 py-0.5 rounded-sm mt-1';
+    //     nameEl.textContent = city.name;
         
-        // Append to parent
-        markerEl.appendChild(pinEl);
-        markerEl.appendChild(nameEl);
+    //     // Append to parent
+    //     markerEl.appendChild(pinEl);
+    //     markerEl.appendChild(nameEl);
         
-        // Add marker to map
-        new mapboxgl.Marker(markerEl)
-          .setLngLat(city.coordinates)
-          .addTo(map.current!);
-      });
-    }
+    //     // Add marker to map
+    //     new mapboxgl.Marker(markerEl)
+    //       .setLngLat(city.coordinates)
+    //       .addTo(map.current!);
+    //   });
+    // }
     
     initializeMap();
 
