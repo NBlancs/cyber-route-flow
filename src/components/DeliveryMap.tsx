@@ -4,12 +4,14 @@ import { MapPin, Truck } from "lucide-react";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
+import { useShipmentData } from '@/hooks/useShipmentData';
 
 export default function DeliveryMap() {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const { shipments } = useShipmentData();
   
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -28,7 +30,7 @@ export default function DeliveryMap() {
         mapboxgl.accessToken = data.token;
         
         // Philippines coordinates (centered approximately on the Philippines archipelago)
-        const philippinesCoordinates = [121.774, 12.879]; // longitude, latitude
+        const philippinesCoordinates: [number, number] = [121.774, 12.879]; // longitude, latitude
         const initialZoom = 5.5; // Adjusted zoom level to show the Philippines
 
         map.current = new mapboxgl.Map({
@@ -59,6 +61,9 @@ export default function DeliveryMap() {
 
           // Add markers for major Philippine cities
           addPhilippineMarkers();
+          
+          // Add markers for active shipments
+          addShipmentMarkers();
         });
       } catch (err) {
         console.error("Map initialization error:", err);
@@ -71,11 +76,11 @@ export default function DeliveryMap() {
       if (!map.current) return;
       
       const cities = [
-        { name: "Manila", coordinates: [120.9842, 14.5995] },
-        { name: "Cebu", coordinates: [123.8854, 10.3157] },
-        { name: "Davao", coordinates: [125.6194, 7.0707] },
-        { name: "Quezon City", coordinates: [121.0244, 14.6760] },
-        { name: "Zamboanga", coordinates: [122.0790, 6.9214] }
+        { name: "Manila", coordinates: [120.9842, 14.5995] as [number, number] },
+        { name: "Cebu", coordinates: [123.8854, 10.3157] as [number, number] },
+        { name: "Davao", coordinates: [125.6194, 7.0707] as [number, number] },
+        { name: "Quezon City", coordinates: [121.0244, 14.6760] as [number, number] },
+        { name: "Zamboanga", coordinates: [122.0790, 6.9214] as [number, number] }
       ];
       
       cities.forEach(city => {
@@ -104,12 +109,127 @@ export default function DeliveryMap() {
       });
     }
     
+    // Add markers for active shipments
+    function addShipmentMarkers() {
+      if (!map.current || !shipments?.length) return;
+      
+      // Get only active shipments (processing or in-transit)
+      const activeShipments = shipments.filter(
+        shipment => shipment.status === 'processing' || shipment.status === 'in-transit'
+      );
+      
+      // Simple geocoding function to convert city names to coordinates
+      // In a real app, you would use a proper geocoding service
+      const geocode = (location: string): [number, number] => {
+        // Extract city name before the comma if it exists
+        const city = location.split(',')[0].trim().toLowerCase();
+        
+        // Map of Philippine cities to coordinates
+        const cityCoordinates: Record<string, [number, number]> = {
+          'manila': [120.9842, 14.5995],
+          'cebu': [123.8854, 10.3157],
+          'davao': [125.6194, 7.0707],
+          'quezon city': [121.0244, 14.6760],
+          'quezon': [121.0244, 14.6760],
+          'zamboanga': [122.0790, 6.9214],
+          'makati': [121.0244, 14.5547],
+          'taguig': [121.0509, 14.5176],
+          'pasig': [121.0851, 14.5764],
+          'mandaluyong': [121.0357, 14.5794],
+          'pasay': [121.0014, 14.5378],
+          'alabang': [121.0200, 14.4200],
+          // Fallback to Manila if the city is not found
+          'default': [120.9842, 14.5995]
+        };
+        
+        return cityCoordinates[city] || cityCoordinates['default'];
+      };
+      
+      activeShipments.forEach(shipment => {
+        // Origin marker (green)
+        const originCoordinates = geocode(shipment.origin);
+        const originEl = document.createElement('div');
+        originEl.className = 'shipment-marker origin-marker';
+        
+        const originPin = document.createElement('div');
+        originPin.className = 'flex items-center justify-center w-6 h-6 rounded-full bg-green-500 border-2 border-white';
+        originPin.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2Z"></path><path d="M12 2c-3.87 0-7 3.13-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Z"></path></svg>`;
+        
+        const originLabel = document.createElement('div');
+        originLabel.className = 'text-xs text-white font-medium bg-black/60 px-1.5 py-0.5 rounded-sm mt-1';
+        originLabel.textContent = `From: ${shipment.origin.split(',')[0]}`;
+        
+        originEl.appendChild(originPin);
+        originEl.appendChild(originLabel);
+        
+        new mapboxgl.Marker(originEl)
+          .setLngLat(originCoordinates)
+          .addTo(map.current!);
+          
+        // Destination marker (blue)
+        const destCoordinates = geocode(shipment.destination);
+        const destEl = document.createElement('div');
+        destEl.className = 'shipment-marker destination-marker';
+        
+        const destPin = document.createElement('div');
+        destPin.className = 'flex items-center justify-center w-6 h-6 rounded-full bg-blue-500 border-2 border-white';
+        destPin.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path fill="white" d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
+        
+        const destLabel = document.createElement('div');
+        destLabel.className = 'text-xs text-white font-medium bg-black/60 px-1.5 py-0.5 rounded-sm mt-1';
+        destLabel.textContent = `To: ${shipment.destination.split(',')[0]}`;
+        
+        destEl.appendChild(destPin);
+        destEl.appendChild(destLabel);
+        
+        new mapboxgl.Marker(destEl)
+          .setLngLat(destCoordinates)
+          .addTo(map.current!);
+          
+        // Draw a line between origin and destination if they're different
+        if (originCoordinates !== destCoordinates && map.current?.loaded()) {
+          const routeId = `route-${shipment.id}`;
+          
+          // Add the route line
+          if (!map.current.getSource(routeId)) {
+            map.current.addSource(routeId, {
+              type: 'geojson',
+              data: {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                  type: 'LineString',
+                  coordinates: [originCoordinates, destCoordinates]
+                }
+              }
+            });
+            
+            map.current.addLayer({
+              id: routeId,
+              type: 'line',
+              source: routeId,
+              layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+              },
+              paint: {
+                'line-color': '#0EA5E9',
+                'line-width': 2,
+                'line-opacity': 0.7,
+                'line-dasharray': [2, 1]
+              }
+            });
+          }
+        }
+      });
+    }
+    
     initializeMap();
 
     return () => {
       map.current?.remove();
     };
-  }, []);
+  }, [shipments]);
 
   if (mapError) {
     return (
@@ -142,7 +262,6 @@ export default function DeliveryMap() {
         )}
       </div>
       
-      {/* Map controls */}
       <div className="absolute top-4 right-4 flex flex-col gap-2">
         <button className="w-8 h-8 bg-black/60 border border-gray-700 rounded-md flex items-center justify-center text-white hover:border-cyber-neon">
           +
