@@ -3,11 +3,12 @@ import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ShipmentTracker from "@/components/ShipmentTracker";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash } from "lucide-react";
+import { Plus, Trash, FileDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useShipmentData } from "@/hooks/useShipmentData";
 import { ShipmentForm } from "@/components/shipping/ShipmentForm";
 import { Shipment } from "@/components/shipping/ShipmentTableRow";
+import { generateShipmentsPDF } from "@/utils/pdfGenerator";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +28,7 @@ export default function ShipmentsPage() {
   const [isEditShipmentOpen, setIsEditShipmentOpen] = useState(false);
   const [shipmentToEdit, setShipmentToEdit] = useState<Shipment | null>(null);
   const [shipmentToDelete, setShipmentToDelete] = useState<Shipment | null>(null);
+  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const { toast } = useToast();
   
   // Count shipments by status
@@ -67,6 +69,26 @@ export default function ShipmentsPage() {
     }
   };
   
+  const handleDownloadPdf = () => {
+    try {
+      setIsPdfGenerating(true);
+      generateShipmentsPDF(shipments);
+      toast({
+        title: "PDF Generated",
+        description: "Shipments report has been downloaded successfully.",
+      });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF report.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPdfGenerating(false);
+    }
+  };
+  
   return (
     <DashboardLayout>
       <div className="mb-8">
@@ -75,9 +97,18 @@ export default function ShipmentsPage() {
             <h1 className="text-3xl font-bold text-white mb-1">Shipments</h1>
             <p className="text-gray-400">Track and manage all your active shipments</p>
           </div>
-          <Button onClick={() => setIsAddShipmentOpen(true)}>
-            <Plus size={16} className="mr-1" /> Create Shipment
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={handleDownloadPdf}
+              disabled={isPdfGenerating || loading || shipments.length === 0}
+            >
+              <FileDown size={16} className="mr-1" /> Download PDF
+            </Button>
+            <Button onClick={() => setIsAddShipmentOpen(true)}>
+              <Plus size={16} className="mr-1" /> Create Shipment
+            </Button>
+          </div>
         </div>
       </div>
       

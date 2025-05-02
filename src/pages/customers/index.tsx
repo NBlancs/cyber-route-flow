@@ -1,12 +1,14 @@
+
 import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import CustomerList from "@/components/CustomerList";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash, CreditCard } from "lucide-react";
+import { Plus, Trash, CreditCard, FileDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCustomerData } from "@/hooks/useCustomerData";
 import { CustomerForm } from "@/components/customers/CustomerForm";
 import { PaymentTransactionsTable } from "@/components/customers/PaymentTransactionsTable";
+import { generateCustomersPDF } from "@/utils/pdfGenerator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   AlertDialog,
@@ -29,6 +31,7 @@ export default function CustomersPage() {
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [activeTab, setActiveTab] = useState<string>("customers");
+  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const { toast } = useToast();
 
   const activeCustomers = customers.filter(c => c.active_shipments && c.active_shipments > 0);
@@ -67,6 +70,26 @@ export default function CustomersPage() {
     }
   };
   
+  const handleDownloadPdf = () => {
+    try {
+      setIsPdfGenerating(true);
+      generateCustomersPDF(customers);
+      toast({
+        title: "PDF Generated",
+        description: "Customers report has been downloaded successfully.",
+      });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF report.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPdfGenerating(false);
+    }
+  };
+  
   return (
     <DashboardLayout>
       <div className="mb-8">
@@ -76,6 +99,13 @@ export default function CustomersPage() {
             <p className="text-gray-400">Manage your customer relationships and credit limits</p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={handleDownloadPdf}
+              disabled={isPdfGenerating || loading || customers.length === 0}
+            >
+              <FileDown size={16} className="mr-1" /> Download PDF
+            </Button>
             <Button onClick={() => setIsAddCustomerOpen(true)}>
               <Plus size={16} className="mr-1" /> Add Customer
             </Button>
