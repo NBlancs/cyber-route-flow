@@ -27,11 +27,15 @@ export default function DeliveryMap() {
         
         mapboxgl.accessToken = data.token;
         
+        // Philippines coordinates (centered approximately on the Philippines archipelago)
+        const philippinesCoordinates = [121.774, 12.879]; // longitude, latitude
+        const initialZoom = 5.5; // Adjusted zoom level to show the Philippines
+
         map.current = new mapboxgl.Map({
           container: mapContainerRef.current,
           style: 'mapbox://styles/mapbox/dark-v11',
-          center: [-74.5, 40],
-          zoom: 9,
+          center: philippinesCoordinates,
+          zoom: initialZoom,
           projection: 'globe'
         });
 
@@ -53,13 +57,51 @@ export default function DeliveryMap() {
             'horizon-blend': 0.2
           });
 
-          // Add a glowing effect to the map
-          map.current?.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+          // Add markers for major Philippine cities
+          addPhilippineMarkers();
         });
       } catch (err) {
         console.error("Map initialization error:", err);
         setMapError("Failed to load the map. Please try again later.");
       }
+    }
+    
+    // Add markers for major cities in the Philippines
+    function addPhilippineMarkers() {
+      if (!map.current) return;
+      
+      const cities = [
+        { name: "Manila", coordinates: [120.9842, 14.5995] },
+        { name: "Cebu", coordinates: [123.8854, 10.3157] },
+        { name: "Davao", coordinates: [125.6194, 7.0707] },
+        { name: "Quezon City", coordinates: [121.0244, 14.6760] },
+        { name: "Zamboanga", coordinates: [122.0790, 6.9214] }
+      ];
+      
+      cities.forEach(city => {
+        // Create a DOM element for the marker
+        const markerEl = document.createElement('div');
+        markerEl.className = 'flex flex-col items-center';
+        
+        // Pin element
+        const pinEl = document.createElement('div');
+        pinEl.className = 'text-cyber-neon';
+        pinEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
+        
+        // City name element
+        const nameEl = document.createElement('div');
+        nameEl.className = 'text-xs text-white font-medium bg-black/60 px-1.5 py-0.5 rounded-sm mt-1';
+        nameEl.textContent = city.name;
+        
+        // Append to parent
+        markerEl.appendChild(pinEl);
+        markerEl.appendChild(nameEl);
+        
+        // Add marker to map
+        new mapboxgl.Marker(markerEl)
+          .setLngLat(city.coordinates)
+          .addTo(map.current!);
+      });
     }
     
     initializeMap();
@@ -83,7 +125,7 @@ export default function DeliveryMap() {
     <div className="cyber-card relative overflow-hidden" style={{ height: '400px' }}>
       <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-black/40 backdrop-blur-sm px-4 py-2 rounded-full">
         <Truck className="h-4 w-4 text-cyber-neon" />
-        <span className="text-sm font-medium">Route Optimization</span>
+        <span className="text-sm font-medium">Philippines Route Optimization</span>
       </div>
       
       <div 
