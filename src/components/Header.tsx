@@ -1,9 +1,24 @@
 
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Package, Map, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Header() {
+  const navigate = useNavigate();
+  
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      // Auth state change in AuthProvider will handle the redirect
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
+
+
+
   return (
     <header className="sticky top-0 z-10 bg-cyber-dark/70 backdrop-blur-lg border-b border-cyber-neon/20">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -17,14 +32,14 @@ export default function Header() {
           <NavLink to="/shipments" icon={<Package size={16} />} label="Shipments" />
           <NavLink to="/customers" icon={<Package size={16} />} label="Customers" />
 
-            <Button 
-            onClick={() => window.location.href = "/auth"} 
+          <Button 
+            onClick={handleLogout}
             variant="ghost" 
             size="sm" 
             className="text-gray-300 hover:text-cyber-neon hover:bg-cyber-neon/10"
-            >
+          >
             Logout
-            </Button>
+          </Button>
         </nav>
         
         {/* <div className="flex items-center gap-4">
