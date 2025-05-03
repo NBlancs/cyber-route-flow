@@ -1,11 +1,18 @@
 
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Map, Truck } from "lucide-react";
+import { Package, Map, Truck, Menu, Users, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useState } from 'react';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 export default function Header() {
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
   
   const handleLogout = async () => {
     try {
@@ -15,9 +22,6 @@ export default function Header() {
       console.error("Error signing out:", error);
     }
   };
-
-
-
 
   return (
     <header className="sticky top-0 z-10 bg-cyber-dark/70 backdrop-blur-lg border-b border-cyber-neon/20">
@@ -30,7 +34,7 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-6">
           <NavLink to="/" icon={<Map size={16} />} label="Map" />
           <NavLink to="/shipments" icon={<Package size={16} />} label="Shipments" />
-          <NavLink to="/customers" icon={<Package size={16} />} label="Customers" />
+          <NavLink to="/customers" icon={<Users size={16} />} label="Customers" />
 
           <Button 
             onClick={handleLogout}
@@ -42,14 +46,37 @@ export default function Header() {
           </Button>
         </nav>
         
-        {/* <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" className="hidden md:flex border-cyber-neon/30 text-cyber-neon hover:border-cyber-neon hover:bg-cyber-neon/10">
-            Connect API
-          </Button>
-          <Button size="sm" className="bg-cyber-neon text-cyber-black hover:bg-cyber-neon/80">
-            <Package size={16} className="mr-2" /> New Shipment
-          </Button>
-        </div> */}
+        {/* Mobile menu */}
+        <div className="md:hidden">
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-gray-300 hover:text-cyber-neon">
+                <Menu size={24} />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="bg-cyber-dark/95 border-cyber-neon/20">
+              <div className="flex flex-col gap-6 pt-8">
+                <MobileNavLink to="/" icon={<Map size={20} />} label="Map" onClick={() => setOpen(false)} />
+                <MobileNavLink to="/shipments" icon={<Package size={20} />} label="Shipments" onClick={() => setOpen(false)} />
+                <MobileNavLink to="/customers" icon={<Users size={20} />} label="Customers" onClick={() => setOpen(false)} />
+                <div className="border-t border-cyber-neon/20 pt-4 mt-4">
+                  <Button 
+                    onClick={() => {
+                      handleLogout();
+                      setOpen(false);
+                    }}
+                    variant="ghost" 
+                    size="sm"
+                    className="w-full flex items-center gap-2 justify-start text-gray-300 hover:text-cyber-neon hover:bg-cyber-neon/10"
+                  >
+                    <LogOut size={20} />
+                    <span>Logout</span>
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
         
       </div>
     </header>
@@ -70,6 +97,23 @@ function NavLink({ to, icon, label }: NavLinkProps) {
     >
       {icon}
       <span className="text-sm">{label}</span>
+    </Link>
+  );
+}
+
+interface MobileNavLinkProps extends NavLinkProps {
+  onClick?: () => void;
+}
+
+function MobileNavLink({ to, icon, label, onClick }: MobileNavLinkProps) {
+  return (
+    <Link 
+      to={to} 
+      onClick={onClick}
+      className="flex items-center gap-3 px-2 py-3 text-gray-300 hover:text-cyber-neon transition-colors"
+    >
+      {icon}
+      <span className="text-lg">{label}</span>
     </Link>
   );
 }
