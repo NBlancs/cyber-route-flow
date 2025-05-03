@@ -1,5 +1,4 @@
-
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Package, Map, Truck, Menu, Users, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +11,11 @@ import {
 
 export default function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
+  
+  // Check if the current path is the user dashboard
+  const isUserDashboard = location.pathname.includes('/user-dashboard');
   
   const handleLogout = async () => {
     try {
@@ -32,9 +35,13 @@ export default function Header() {
         </Link>
         
         <nav className="hidden md:flex items-center gap-6">
-          <NavLink to="/" icon={<Map size={16} />} label="Map" />
-          <NavLink to="/shipments" icon={<Package size={16} />} label="Shipments" />
-          <NavLink to="/customers" icon={<Users size={16} />} label="Customers" />
+          {!isUserDashboard && (
+            <>
+              <NavLink to="/" icon={<Map size={16} />} label="Map" />
+              <NavLink to="/shipments" icon={<Package size={16} />} label="Shipments" />
+              <NavLink to="/customers" icon={<Users size={16} />} label="Customers" />
+            </>
+          )}
 
           <Button 
             onClick={handleLogout}
@@ -42,6 +49,7 @@ export default function Header() {
             size="sm" 
             className="text-gray-300 hover:text-cyber-neon hover:bg-cyber-neon/10"
           >
+            <LogOut size={16} className="mr-1.5" />
             Logout
           </Button>
         </nav>
@@ -56,10 +64,14 @@ export default function Header() {
             </SheetTrigger>
             <SheetContent side="right" className="bg-cyber-dark/95 border-cyber-neon/20">
               <div className="flex flex-col gap-6 pt-8">
-                <MobileNavLink to="/" icon={<Map size={20} />} label="Map" onClick={() => setOpen(false)} />
-                <MobileNavLink to="/shipments" icon={<Package size={20} />} label="Shipments" onClick={() => setOpen(false)} />
-                <MobileNavLink to="/customers" icon={<Users size={20} />} label="Customers" onClick={() => setOpen(false)} />
-                <div className="border-t border-cyber-neon/20 pt-4 mt-4">
+                {!isUserDashboard && (
+                  <>
+                    <MobileNavLink to="/" icon={<Map size={20} />} label="Map" onClick={() => setOpen(false)} />
+                    <MobileNavLink to="/shipments" icon={<Package size={20} />} label="Shipments" onClick={() => setOpen(false)} />
+                    <MobileNavLink to="/customers" icon={<Users size={20} />} label="Customers" onClick={() => setOpen(false)} />
+                  </>
+                )}
+                <div className={`${!isUserDashboard ? 'border-t border-cyber-neon/20 pt-4 mt-4' : ''}`}>
                   <Button 
                     onClick={() => {
                       handleLogout();
