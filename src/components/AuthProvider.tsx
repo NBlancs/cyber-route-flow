@@ -9,6 +9,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   userRole: string;
+  setUserRole: (role: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   userRole: 'admin',
+  setUserRole: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -61,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [navigate]);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole }}>
+    <AuthContext.Provider value={{ user, session, loading, userRole, setUserRole }}>
       {children}
     </AuthContext.Provider>
   );

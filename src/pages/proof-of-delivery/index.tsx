@@ -16,6 +16,8 @@ interface DeliveryProof {
   created_at: string;
   user_id: string;
   user_email?: string;
+  notes?: string;
+  status: string;
 }
 
 export default function ProofOfDeliveryPage() {
@@ -31,6 +33,8 @@ export default function ProofOfDeliveryPage() {
   const fetchDeliveryProofs = async () => {
     try {
       setLoading(true);
+      
+      // Fetch delivery proofs from the new table structure
       const { data, error } = await supabase
         .from('delivery_proofs')
         .select('*')
@@ -38,10 +42,11 @@ export default function ProofOfDeliveryPage() {
       
       if (error) throw error;
       
+      // Type assertion to ensure the data is of DeliveryProof type
+      const proofs = data as unknown as DeliveryProof[];
+      
       // Get user emails for the delivery proofs
-      if (data && data.length > 0) {
-        const proofs = [...data] as DeliveryProof[];
-        
+      if (proofs && proofs.length > 0) {
         // Get unique user ids
         const userIds = [...new Set(proofs.map(proof => proof.user_id))];
         

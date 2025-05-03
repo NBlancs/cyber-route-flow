@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth } from '@/components/AuthProvider';
 
 export default function AuthPage() {
   const [email, setEmail] = useState('');
@@ -17,6 +18,7 @@ export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [role, setRole] = useState('admin');
   const navigate = useNavigate();
+  const { setUserRole } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +41,7 @@ export default function AuthPage() {
         }
         
         localStorage.setItem('userRole', role);
+        setUserRole(role);
         
         // Navigate based on role
         if (role === 'admin') {
