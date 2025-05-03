@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/components/AuthProvider';
@@ -93,16 +93,15 @@ export default function AuthPage() {
 
           <div className="space-y-3">
             <Label className="text-white">Select Role</Label>
-            <RadioGroup value={role} onValueChange={setRole} className="flex flex-col space-y-2">
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="admin" id="admin" />
-                <Label htmlFor="admin" className="text-white">Admin</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="user" id="user" />
-                <Label htmlFor="user" className="text-white">User</Label>
-              </div>
-            </RadioGroup>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger className="bg-white/10 border-cyber-neon/30 text-white">
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent className="bg-white/90 text-black border-cyber-neon/30">
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           {isLogin && (
