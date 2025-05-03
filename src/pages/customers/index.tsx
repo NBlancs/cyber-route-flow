@@ -23,6 +23,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Customer } from "@/types/customer";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function CustomersPage() {
   const { customers, loading, fetchCustomers } = useCustomerData();
@@ -33,6 +34,7 @@ export default function CustomersPage() {
   const [activeTab, setActiveTab] = useState<string>("customers");
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const activeCustomers = customers.filter(c => c.active_shipments && c.active_shipments > 0);
   const overdueCustomers = customers.filter(c => c.credit_status === 'exceeded');
@@ -92,28 +94,32 @@ export default function CustomersPage() {
   
   return (
     <DashboardLayout>
-      <div className="mb-8">
-        <div className="flex justify-between items-center">
+      <div className="mb-6">
+        <div className={`flex ${isMobile ? 'flex-col gap-4' : 'justify-between items-center'}`}>
           <div>
-            <h1 className="text-3xl font-bold text-white mb-1">Customers</h1>
-            <p className="text-gray-400">Manage your customer relationships and credit limits</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Customers</h1>
+            <p className="text-sm text-gray-400">Manage your customer relationships and credit limits</p>
           </div>
-          <div className="flex gap-2">
+          <div className={`flex ${isMobile ? 'flex-col w-full' : 'gap-2'}`}>
             <Button 
               variant="outline"
               onClick={handleDownloadPdf}
               disabled={isPdfGenerating || loading || customers.length === 0}
+              className={isMobile ? "mb-2 w-full" : ""}
             >
               <FileDown size={16} className="mr-1" /> Download PDF
             </Button>
-            <Button onClick={() => setIsAddCustomerOpen(true)}>
+            <Button 
+              onClick={() => setIsAddCustomerOpen(true)}
+              className={isMobile ? "w-full" : ""}
+            >
               <Plus size={16} className="mr-1" /> Add Customer
             </Button>
           </div>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
@@ -140,12 +146,13 @@ export default function CustomersPage() {
         </Card>
       </div>
       
-      <Tabs defaultValue="customers" onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
+      <Tabs defaultValue="customers" onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-4 w-full grid grid-cols-2">
           <TabsTrigger value="customers">Customers</TabsTrigger>
           <TabsTrigger value="transactions">
             <CreditCard size={16} className="mr-1" />
-            Payment Transactions
+            <span className={isMobile ? "hidden" : ""}>Payment Transactions</span>
+            <span className={isMobile ? "" : "hidden"}>Transactions</span>
           </TabsTrigger>
         </TabsList>
         

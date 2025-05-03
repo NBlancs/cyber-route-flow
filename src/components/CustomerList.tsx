@@ -7,6 +7,7 @@ import { CustomerCard } from "@/components/customers/CustomerCard";
 import { EmptyCustomerState } from "@/components/customers/EmptyCustomerState";
 import { useCustomerData } from "@/hooks/useCustomerData";
 import { Customer } from "@/types/customer";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +26,7 @@ export default function CustomerList({ onEdit, onDelete }: CustomerListProps) {
   const { customers, loading, fetchCustomers } = useCustomerData();
   const { toast } = useToast();
   const { createPaymentIntent, loading: paymentLoading } = usePaymentGateway();
+  const isMobile = useIsMobile();
 
   const handlePaymentRequest = async (customer: Customer) => {
     try {
@@ -55,7 +57,7 @@ export default function CustomerList({ onEdit, onDelete }: CustomerListProps) {
   };
 
   return (
-    <div className="cyber-card p-5">
+    <div className="cyber-card p-3 md:p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Package size={18} className="text-cyber-neon" />
@@ -83,7 +85,7 @@ export default function CustomerList({ onEdit, onDelete }: CustomerListProps) {
           <span className="ml-2">Loading customers...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-3 md:gap-4">
           {customers.map((customer) => (
             <div key={customer.id} className="relative">
               {(onEdit || onDelete) && (

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function ShipmentsPage() {
   const { shipments, loading, fetchShipments } = useShipmentData();
@@ -30,6 +31,7 @@ export default function ShipmentsPage() {
   const [shipmentToDelete, setShipmentToDelete] = useState<Shipment | null>(null);
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   // Count shipments by status
   const inTransitCount = shipments.filter(s => s.status === 'in-transit').length;
@@ -91,28 +93,32 @@ export default function ShipmentsPage() {
   
   return (
     <DashboardLayout>
-      <div className="mb-8">
-        <div className="flex justify-between items-center">
+      <div className="mb-6">
+        <div className={`flex ${isMobile ? 'flex-col gap-4' : 'justify-between items-center'}`}>
           <div>
-            <h1 className="text-3xl font-bold text-white mb-1">Shipments</h1>
-            <p className="text-gray-400">Track and manage all your active shipments</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Shipments</h1>
+            <p className="text-sm text-gray-400">Track and manage all your active shipments</p>
           </div>
-          <div className="flex gap-2">
+          <div className={`flex ${isMobile ? 'flex-col w-full' : 'gap-2'}`}>
             <Button 
               variant="outline"
               onClick={handleDownloadPdf}
               disabled={isPdfGenerating || loading || shipments.length === 0}
+              className={isMobile ? "mb-2 w-full" : ""}
             >
               <FileDown size={16} className="mr-1" /> Download PDF
             </Button>
-            <Button onClick={() => setIsAddShipmentOpen(true)}>
+            <Button 
+              onClick={() => setIsAddShipmentOpen(true)}
+              className={isMobile ? "w-full" : ""}
+            >
               <Plus size={16} className="mr-1" /> Create Shipment
             </Button>
           </div>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Processing</CardTitle>

@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type ShipmentTrackerProps = {
   onEdit?: (shipment: Shipment) => void;
@@ -27,9 +28,10 @@ export default function ShipmentTracker({ onEdit, onDelete }: ShipmentTrackerPro
     fetchShipments, 
     handleTrackShipment 
   } = useShipmentData();
+  const isMobile = useIsMobile();
 
   return (
-    <div className="cyber-card p-5">
+    <div className="cyber-card p-3 md:p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Package size={18} className="text-cyber-neon" />
@@ -58,73 +60,172 @@ export default function ShipmentTracker({ onEdit, onDelete }: ShipmentTrackerPro
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-xs text-gray-400 border-b border-gray-800">
-                <th className="pb-2 text-left font-medium">Tracking ID</th>
-                <th className="pb-2 text-left font-medium">Customer</th>
-                <th className="pb-2 text-left font-medium">Route</th>
-                <th className="pb-2 text-left font-medium">Status</th>
-                <th className="pb-2 text-left font-medium">ETA</th>
-                <th className="pb-2 text-left font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-            {shipments.map((shipment) => (
-  <ShipmentTableRow
-    key={shipment.id}
-    shipment={shipment}
-    onTrack={handleTrackShipment}
-    isTracking={trackingLoading}
-    actions={(onEdit || onDelete) && (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="24" 
-              height="24" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="1" />
-              <circle cx="12" cy="5" r="1" />
-              <circle cx="12" cy="19" r="1" />
-            </svg>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {onEdit && (
-            <DropdownMenuItem onClick={() => onEdit(shipment)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              <span>Edit</span>
-            </DropdownMenuItem>
-          )}
-          {onDelete && (
-            <DropdownMenuItem 
-              onClick={() => onDelete(shipment)}
-              className="text-red-600 focus:text-red-600"
-            >
-              <Trash className="mr-2 h-4 w-4" />
-              <span>Delete</span>
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    )}
-  />
-))}
-
+          {isMobile ? (
+            // Mobile view - card layout
+            <div className="grid grid-cols-1 gap-3">
+              {shipments.map((shipment) => (
+                <div 
+                  key={shipment.id} 
+                  className="border border-gray-800 rounded-lg p-3 bg-cyber-dark/30"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-gray-400">Tracking ID</span>
+                      <span className="font-medium text-cyber-neon">{shipment.tracking_id}</span>
+                    </div>
+                    {(onEdit || onDelete) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              width="24" 
+                              height="24" 
+                              viewBox="0 0 24 24" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              strokeWidth="2" 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round"
+                            >
+                              <circle cx="12" cy="12" r="1" />
+                              <circle cx="12" cy="5" r="1" />
+                              <circle cx="12" cy="19" r="1" />
+                            </svg>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {onEdit && (
+                            <DropdownMenuItem onClick={() => onEdit(shipment)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>Edit</span>
+                            </DropdownMenuItem>
+                          )}
+                          {onDelete && (
+                            <DropdownMenuItem 
+                              onClick={() => onDelete(shipment)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              <span>Delete</span>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 mb-2">
+                    <div>
+                      <span className="text-xs text-gray-400">Customer</span>
+                      <p className="text-sm">{shipment.customer_name}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-400">Status</span>
+                      <div className="mt-1">
+                        <span className={`
+                          inline-flex px-2 py-1 text-xs rounded-full
+                          ${shipment.status === 'delivered' ? 'bg-green-500/20 text-green-400' : 
+                            shipment.status === 'in-transit' ? 'bg-blue-500/20 text-blue-400' : 
+                            'bg-yellow-500/20 text-yellow-400'}
+                        `}>
+                          {shipment.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 mb-2">
+                    <div>
+                      <span className="text-xs text-gray-400">Origin</span>
+                      <p className="text-sm truncate">{shipment.origin}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-400">Destination</span>
+                      <p className="text-sm truncate">{shipment.destination}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <span className="text-xs text-gray-400">ETA</span>
+                    <p className="text-sm">{shipment.eta || 'Calculating...'}</p>
+                  </div>
+                </div>
+              ))}
               {shipments.length === 0 && <EmptyShipmentState />}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            // Desktop view - table layout
+            <table className="w-full">
+              <thead>
+                <tr className="text-xs text-gray-400 border-b border-gray-800">
+                  <th className="pb-2 text-left font-medium">Tracking ID</th>
+                  <th className="pb-2 text-left font-medium">Customer</th>
+                  <th className="pb-2 text-left font-medium">Route</th>
+                  <th className="pb-2 text-left font-medium">Status</th>
+                  <th className="pb-2 text-left font-medium">ETA</th>
+                  <th className="pb-2 text-left font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shipments.map((shipment) => (
+                  <ShipmentTableRow
+                    key={shipment.id}
+                    shipment={shipment}
+                    onTrack={handleTrackShipment}
+                    isTracking={trackingLoading}
+                    actions={(onEdit || onDelete) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              width="24" 
+                              height="24" 
+                              viewBox="0 0 24 24" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              strokeWidth="2" 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round"
+                            >
+                              <circle cx="12" cy="12" r="1" />
+                              <circle cx="12" cy="5" r="1" />
+                              <circle cx="12" cy="19" r="1" />
+                            </svg>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {onEdit && (
+                            <DropdownMenuItem onClick={() => onEdit(shipment)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>Edit</span>
+                            </DropdownMenuItem>
+                          )}
+                          {onDelete && (
+                            <DropdownMenuItem 
+                              onClick={() => onDelete(shipment)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              <span>Delete</span>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  />
+                ))}
+                {shipments.length === 0 && <EmptyShipmentState />}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>
