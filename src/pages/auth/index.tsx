@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/components/AuthProvider';
@@ -16,7 +15,6 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [rememberMe, setRememberMe] = useState(false);
-  const [role, setRole] = useState('admin');
   const navigate = useNavigate();
   const { setUserRole } = useAuth();
 
@@ -33,31 +31,18 @@ export default function AuthPage() {
           password,
         });
         if (error) throw error;
-
-        // Store role and persist session preference
-        localStorage.setItem('userRole', role);
+        
+        // Store persistence session preference
         localStorage.setItem('persistSession', rememberMe ? 'true' : 'false');
-        setUserRole(role);
         
-        console.log("Login successful with role:", role);
-        
-        // Navigate based on role
-        if (role === 'admin') {
-          navigate('/');
-        } else {
-          navigate('/user-dashboard');
-        }
+        console.log("Login successful, navigating...");
+        // Navigation will be handled by AuthProvider after role is fetched
       } else {
         const {
           error
         } = await supabase.auth.signUp({
           email,
           password,
-          options: {
-            data: {
-              role: role,
-            }
-          }
         });
         if (error) throw error;
         toast({
@@ -87,19 +72,6 @@ export default function AuthPage() {
           </div>
           <div>
             <Input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="bg-white/10 border-cyber-neon/30 text-white" />
-          </div>
-
-          <div className="space-y-3">
-            <Label className="text-white">Select Role</Label>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger className="bg-white/10 border-cyber-neon/30 text-white">
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-              <SelectContent className="bg-white/90 text-black border-cyber-neon/30">
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="user">User</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           
           {isLogin && (
