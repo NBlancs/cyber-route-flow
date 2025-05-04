@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +16,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
-  userRole: '',
+  userRole: 'admin',
   setUserRole: () => {},
 });
 
@@ -23,40 +24,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>(localStorage.getItem('userRole') || 'admin');
   const navigate = useNavigate();
 
-  // Fetch user role from database whenever user changes
+  // Store role in localStorage when it changes
   useEffect(() => {
-    const fetchUserRole = async () => {
-      if (!user) {
-        setUserRole('');
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching user role:', error);
-          return;
-        }
-
-        if (data) {
-          console.log('User role fetched:', data.role);
-          setUserRole(data.role);
-        }
-      } catch (error) {
-        console.error('Error in fetchUserRole:', error);
-      }
-    };
-
-    fetchUserRole();
-  }, [user]);
+    if (userRole) {
+      localStorage.setItem('userRole', userRole);
+    }
+  }, [userRole]);
 
   useEffect(() => {
     // Get persistence preference
@@ -69,10 +45,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         
         if (event === 'SIGNED_OUT') {
-          setUserRole('');
+          localStorage.removeItem('userRole');
           navigate('/auth');
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Role-based navigation will happen after role is fetched in the useEffect above
+          // Get role from localStorage
+          const storedRole = localStorage.getItem('userRole') || 'admin';
+          setUserRole(storedRole);
+          
+          // Redirect to the appropriate dashboard based on role
+          if (storedRole === 'admin') {
+            navigate('/');
+          } else {
+            navigate('/user-dashboard');
+          }
         }
         setLoading(false);
       }
@@ -94,24 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
-
-  // Add effect to navigate based on role changes
-  useEffect(() => {
-    if (user && userRole && !loading) {
-      console.log('Navigating based on role:', userRole);
-      
-      // Only navigate if the user is on a route they shouldn't be on
-      const currentPath = window.location.pathname;
-      const isOnAdminRoute = currentPath === '/' || currentPath.startsWith('/customers') || 
-                            currentPath.startsWith('/shipments') || currentPath.startsWith('/proof-of-delivery');
-      const isOnUserRoute = currentPath.startsWith('/user-dashboard');
-      
-      if ((userRole === 'admin' && isOnUserRoute) || (userRole === 'user' && isOnAdminRoute)) {
-        const redirectPath = userRole === 'admin' ? '/' : '/user-dashboard';
-        navigate(redirectPath);
-      }
-    }
-  }, [user, userRole, loading, navigate]);
 
   return (
     <AuthContext.Provider value={{ user, session, loading, userRole, setUserRole }}>
