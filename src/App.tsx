@@ -12,6 +12,7 @@ import ShipmentsPage from "./pages/shipments";
 import NotFound from "./pages/NotFound";
 import UserDashboardPage from "./pages/user-dashboard";
 import ProofOfDeliveryPage from "./pages/proof-of-delivery";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
@@ -25,20 +26,35 @@ function ProtectedRoute({
   const { user, loading, userRole } = useAuth();
   const location = useLocation();
   
+  // Log for debugging
+  useEffect(() => {
+    console.log("Protected Route Check:", { 
+      userRole, 
+      requiredRole, 
+      isAuthenticated: !!user, 
+      isLoading: loading 
+    });
+  }, [user, loading, userRole, requiredRole]);
+  
   if (loading) {
     return <div>Loading...</div>;
   }
   
+  // Not authenticated - redirect to login
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
   
-  // Strictly enforce role-based access
+  // Role mismatch - redirect based on role
   if (requiredRole && userRole !== requiredRole) {
-    // Redirect admins to admin dashboard and users to user dashboard if they're trying to access the wrong area
-    return <Navigate to={userRole === 'admin' ? '/' : '/user-dashboard'} replace />;
+    console.log(`Access denied: User has role ${userRole} but route requires ${requiredRole}`);
+    
+    // Redirect users to their appropriate dashboard
+    const redirectPath = userRole === 'admin' ? '/' : '/user-dashboard';
+    return <Navigate to={redirectPath} replace />;
   }
   
+  // Access granted
   return <>{children}</>;
 }
 

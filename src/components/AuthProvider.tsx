@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +26,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>(localStorage.getItem('userRole') || 'admin');
   const navigate = useNavigate();
+
+  // Store role in localStorage when it changes
+  useEffect(() => {
+    if (userRole) {
+      localStorage.setItem('userRole', userRole);
+    }
+  }, [userRole]);
 
   useEffect(() => {
     // Get persistence preference

@@ -39,6 +39,8 @@ export default function AuthPage() {
         localStorage.setItem('persistSession', rememberMe ? 'true' : 'false');
         setUserRole(role);
         
+        console.log("Login successful with role:", role);
+        
         // Navigate based on role
         if (role === 'admin') {
           navigate('/');
