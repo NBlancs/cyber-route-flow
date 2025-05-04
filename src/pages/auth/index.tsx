@@ -26,6 +26,7 @@ export default function AuthPage() {
     try {
       if (isLogin) {
         const {
+          data: { session },
           error
         } = await supabase.auth.signInWithPassword({
           email,
@@ -33,14 +34,9 @@ export default function AuthPage() {
         });
         if (error) throw error;
 
-        // Store role and persist session if remember me is checked
-        if (rememberMe) {
-          localStorage.setItem('persistSession', 'true');
-        } else {
-          localStorage.removeItem('persistSession');
-        }
-        
+        // Store role and persist session preference
         localStorage.setItem('userRole', role);
+        localStorage.setItem('persistSession', rememberMe ? 'true' : 'false');
         setUserRole(role);
         
         // Navigate based on role

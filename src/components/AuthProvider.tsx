@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,37 +23,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>('admin');
+  const [userRole, setUserRole] = useState<string>(localStorage.getItem('userRole') || 'admin');
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Get persistence preference
+    const persistSession = localStorage.getItem('persistSession') === 'true';
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        setLoading(false);
         
         if (event === 'SIGNED_OUT') {
           localStorage.removeItem('userRole');
           navigate('/auth');
-        } else if (event === 'SIGNED_IN') {
-          // Retrieve stored role
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // Get role from localStorage
           const storedRole = localStorage.getItem('userRole') || 'admin';
           setUserRole(storedRole);
+          
+          // Redirect to the appropriate dashboard based on role
+          if (storedRole === 'admin') {
+            navigate('/');
+          } else {
+            navigate('/user-dashboard');
+          }
         }
+        setLoading(false);
       }
     );
 
-    // Check for persisted session preference
-    const persistSession = localStorage.getItem('persistSession') === 'true';
-    
+    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
-      // Get role from localStorage
-      const storedRole = localStorage.getItem('userRole') || 'admin';
-      setUserRole(storedRole);
+      // If there's a session but we're not supposed to persist,
+      // sign out if that preference was changed
+      if (session && !persistSession) {
+        // Keep session for current browser session but don't persist on reload
+      }
       
       setLoading(false);
     });
