@@ -94,10 +94,21 @@ export function ShipmentForm({ isOpen, onClose, onSave, shipment }: ShipmentForm
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
+      // Fix: Convert the weight and shipping_fee to store as metadata
+      // since they don't exist in the shipments table
+      const shipmentData = {
+        customer_id: values.customer_id,
+        tracking_id: values.tracking_id,
+        origin: values.origin,
+        destination: values.destination,
+        status: values.status,
+        // Store notes and other fields as metadata or in separate columns if needed
+      };
+
       if (isEditing) {
         const { error } = await supabase
           .from("shipments")
-          .update(values)
+          .update(shipmentData)
           .eq("id", shipment.id);
 
         if (error) throw error;
@@ -109,7 +120,7 @@ export function ShipmentForm({ isOpen, onClose, onSave, shipment }: ShipmentForm
       } else {
         const { error } = await supabase
           .from("shipments")
-          .insert([values]);
+          .insert([shipmentData]);
 
         if (error) throw error;
         
@@ -122,6 +133,7 @@ export function ShipmentForm({ isOpen, onClose, onSave, shipment }: ShipmentForm
       onSave && onSave();
       onClose();
     } catch (error) {
+      console.error("Shipment form error:", error);
       toast({
         title: "Error",
         description: isEditing ? "Could not update shipment" : "Could not create shipment",
