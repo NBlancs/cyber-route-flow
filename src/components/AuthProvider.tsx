@@ -24,15 +24,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>(localStorage.getItem('userRole') || 'admin');
+  const [userRole, setUserRole] = useState<string>('');
   const navigate = useNavigate();
 
-  // Store role in localStorage when it changes
-  useEffect(() => {
-    if (userRole) {
-      localStorage.setItem('userRole', userRole);
+  // Fetch the user's role from the database
+  const fetchUserRole = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching user role:', error);
+        return null;
+      }
+      
+      return data?.role;
+    } catch (error) {
+      console.error('Failed to fetch user role:', error);
+      return null;
     }
-  }, [userRole]);
+  };
 
   useEffect(() => {
     // Get persistence preference
@@ -40,23 +54,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      async (event, currentSession) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
         
         if (event === 'SIGNED_OUT') {
-          localStorage.removeItem('userRole');
+          setUserRole('');
           navigate('/auth');
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Get role from localStorage
-          const storedRole = localStorage.getItem('userRole') || 'admin';
-          setUserRole(storedRole);
-          
-          // Redirect to the appropriate dashboard based on role
-          if (storedRole === 'admin') {
-            navigate('/');
-          } else {
-            navigate('/user-dashboard');
+          if (currentSession?.user) {
+            // Fetch role from the database
+            const role = await fetchUserRole(currentSession.user.id);
+            
+            if (role) {
+              setUserRole(role);
+              
+              // Redirect based on role
+              if (role === 'admin') {
+                navigate('/');
+              } else {
+                navigate('/user-dashboard');
+              }
+            }
           }
         }
         setLoading(false);
@@ -64,14 +83,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
       
-      // If there's a session but we're not supposed to persist,
-      // sign out if that preference was changed
-      if (session && !persistSession) {
-        // Keep session for current browser session but don't persist on reload
+      if (currentSession?.user) {
+        // Fetch role for existing session
+        const role = await fetchUserRole(currentSession.user.id);
+        if (role) {
+          setUserRole(role);
+        }
       }
       
       setLoading(false);
