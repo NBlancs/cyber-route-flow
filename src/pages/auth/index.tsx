@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -38,10 +39,26 @@ export default function AuthPage() {
         localStorage.setItem('persistSession', rememberMe ? 'true' : 'false');
         setUserRole(role);
         
-        console.log("Login successful with role:", role);
+        // console.log("Login successful with role:", role);
         
         // Navigate based on role
-        if (role === 'admin') {
+        // Fetch the user's role from the database
+        const { data: userData, error: userError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single();
+        
+        if (userError) throw userError;
+        
+        const userRole = userData?.role || 'user'; // Default to 'user' if no role found
+        
+        // Store the fetched role
+        localStorage.setItem('userRole', userRole);
+        setUserRole(userRole);
+        
+        // Navigate based on the fetched role
+        if (userRole === 'admin') {
           navigate('/');
         } else {
           navigate('/user-dashboard');
@@ -88,7 +105,7 @@ export default function AuthPage() {
             <Input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="bg-white/10 border-cyber-neon/30 text-white" />
           </div>
 
-          <div className="space-y-3">
+          {/* <div className="space-y-3">
             <Label className="text-white">Select Role</Label>
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger className="bg-white/10 border-cyber-neon/30 text-white">
@@ -99,7 +116,7 @@ export default function AuthPage() {
                 <SelectItem value="user">User</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
           
           {isLogin && (
             <div className="flex items-center space-x-2">
