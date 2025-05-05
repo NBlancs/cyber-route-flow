@@ -1,15 +1,24 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera } from "lucide-react";
+import { Camera, RefreshCcw } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { Shipment } from "@/components/shipping/ShipmentTableRow";
 
 export default function UserDashboardPage() {
   const { user } = useAuth();
@@ -18,7 +27,72 @@ export default function UserDashboardPage() {
   const [trackingId, setTrackingId] = useState("");
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [assignedShipments, setAssignedShipments] = useState<Shipment[]>([]);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetch user's assigned shipments when the component mounts or active tab changes to "shipments"
+    if (user && activeTab === "shipments") {
+      fetchUserShipments();
+    }
+  }, [user, activeTab]);
+
+  const fetchUserShipments = async () => {
+    if (!user?.email) return;
+    
+    setLoading(true);
+    try {
+      // First, find if the user's email matches any customer email
+      const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+      
+      if (customerError && customerError.code !== 'PGRST116') {
+        // PGRST116 is the error code for "no rows returned"
+        throw customerError;
+      }
+
+      if (customerData?.id) {
+        // If we found a customer with matching email, fetch their shipments
+        const { data: shipments, error: shipmentsError } = await supabase
+          .from('shipments')
+          .select('*, customers(name)')
+          .eq('customer_id', customerData.id)
+          .order('created_at', { ascending: false });
+        
+        if (shipmentsError) throw shipmentsError;
+        
+        // Format the shipments
+        const formattedShipments = shipments.map(shipment => ({
+          id: shipment.id,
+          tracking_id: shipment.tracking_id,
+          customer_id: shipment.customer_id,
+          origin: shipment.origin,
+          destination: shipment.destination,
+          status: (shipment.status || 'processing') as 'processing' | 'in-transit' | 'delivered' | 'failed',
+          eta: shipment.eta ? new Date(shipment.eta).toLocaleString() : 'Pending',
+          customer_name: shipment.customers?.name || 'Unknown Customer'
+        }));
+        
+        setAssignedShipments(formattedShipments);
+      } else {
+        // No matching customer found
+        setAssignedShipments([]);
+      }
+    } catch (error: any) {
+      console.error('Error fetching user shipments:', error);
+      toast({
+        title: "Error",
+        description: "Could not load your shipments",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -184,13 +258,65 @@ export default function UserDashboardPage() {
         
         <TabsContent value="shipments" className="mt-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex justify-between items-center pb-2">
               <CardTitle>My Assigned Shipments</CardTitle>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchUserShipments} 
+                disabled={loading}
+                className="text-xs"
+              >
+                <RefreshCcw size={14} className={`mr-1 ${loading ? 'animate-spin' : ''}`} /> 
+                Refresh
+              </Button>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-500 text-center py-6">
-                You have no assigned shipments at the moment.
-              </p>
+              {loading ? (
+                <div className="py-6 flex justify-center items-center">
+                  <RefreshCcw className="animate-spin mr-2" size={18} />
+                  <span>Loading shipments...</span>
+                </div>
+              ) : assignedShipments.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tracking ID</TableHead>
+                        <TableHead>Origin</TableHead>
+                        <TableHead>Destination</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>ETA</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {assignedShipments.map((shipment) => (
+                        <TableRow key={shipment.id}>
+                          <TableCell className="font-medium">{shipment.tracking_id}</TableCell>
+                          <TableCell>{shipment.origin}</TableCell>
+                          <TableCell>{shipment.destination}</TableCell>
+                          <TableCell>
+                            <span className={`
+                              inline-flex px-2 py-1 text-xs rounded-full
+                              ${shipment.status === 'delivered' ? 'bg-green-500/20 text-green-400' : 
+                                shipment.status === 'in-transit' ? 'bg-blue-500/20 text-blue-400' : 
+                                'bg-yellow-500/20 text-yellow-400'}
+                            `}>
+                              {shipment.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>{shipment.eta}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-6">
+                  No assigned shipments found for your account. 
+                  {user?.email ? ` We couldn't find any customer account linked to ${user.email}.` : ''}
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
