@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { X } from "lucide-react";
 import { useForm, SubmitHandler } from "react-hook-form";
@@ -58,6 +57,8 @@ const formSchema = z.object({
   }),
   status: z.string().min(2, {
     message: "Status is required",
+  }).refine(val => ['processing', 'in-transit', 'delivered', 'failed'].includes(val), {
+    message: "Status must be one of: processing, in-transit, delivered, failed",
   }),
   notes: z.string().optional(),
 });
@@ -85,45 +86,54 @@ export function ShipmentForm({ isOpen, onClose, onSave, shipment }: ShipmentForm
       tracking_id: shipment?.tracking_id || "",
       origin: shipment?.origin || "",
       destination: shipment?.destination || "",
-      weight: "",
-      shipping_fee: "",
-      status: shipment?.status || "pending",
-      notes: "",
+      weight: shipment?.weight?.toString() || "",
+      shipping_fee: shipment?.shipping_fee?.toString() || "",
+      status: shipment?.status || "processing",
+      notes: shipment?.notes || "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      // Fix: Convert the weight and shipping_fee to store as metadata
-      // since they don't exist in the shipments table
-      const shipmentData = {
+      const dbValues = {
         customer_id: values.customer_id,
         tracking_id: values.tracking_id,
         origin: values.origin,
         destination: values.destination,
         status: values.status,
-        // Store notes and other fields as metadata or in separate columns if needed
       };
 
-      if (isEditing) {
-        const { error } = await supabase
-          .from("shipments")
-          .update(shipmentData)
-          .eq("id", shipment.id);
+      console.log("Submitting shipment data to database:", dbValues);
 
-        if (error) throw error;
+      if (isEditing) {
+        const { data, error } = await supabase
+          .from("shipments")
+          .update(dbValues)
+          .eq("id", shipment.id)
+          .select();
+
+        if (error) {
+          console.error("Update error:", error);
+          throw error;
+        }
         
+        console.log("Updated shipment data:", data);
         toast({
           title: "Success",
           description: "Shipment updated successfully",
         });
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("shipments")
-          .insert([shipmentData]);
+          .insert([dbValues])
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error("Insert error:", error);
+          throw error;
+        }
         
+        console.log("Created shipment data:", data);
         toast({
           title: "Success",
           description: "Shipment created successfully",
@@ -132,11 +142,21 @@ export function ShipmentForm({ isOpen, onClose, onSave, shipment }: ShipmentForm
       
       onSave && onSave();
       onClose();
-    } catch (error) {
-      console.error("Shipment form error:", error);
+    } catch (error: any) {
+      console.error("Submission error:", error);
+      
+      let errorMessage = "";
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.details) {
+        errorMessage = error.details;
+      } else {
+        errorMessage = isEditing ? "Could not update shipment" : "Could not create shipment";
+      }
+      
       toast({
         title: "Error",
-        description: isEditing ? "Could not update shipment" : "Could not create shipment",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -153,7 +173,6 @@ export function ShipmentForm({ isOpen, onClose, onSave, shipment }: ShipmentForm
         if (error) throw error;
         
         if (data) {
-          // Ensure we have all required Customer properties
           const formattedCustomers = data.map(customer => ({
             ...customer,
             credit_limit: customer.credit_limit || 0,
@@ -317,7 +336,7 @@ export function ShipmentForm({ isOpen, onClose, onSave, shipment }: ShipmentForm
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-gray-800 border border-gray-700 text-white">
-                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="processing">Processing</SelectItem>
                       <SelectItem value="in-transit">In Transit</SelectItem>
                       <SelectItem value="delivered">Delivered</SelectItem>
                       <SelectItem value="failed">Failed</SelectItem>
