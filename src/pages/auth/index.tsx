@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -76,8 +75,8 @@ export default function AuthPage() {
     }
   };
 
-  return <div className="min-h-screen flex items-center justify-center bg-cyber-dark">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white/5 backdrop-blur-lg rounded-lg border border-cyber-neon/20 px-[32px] mx-[32px] my-0">
+  return <div className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat relative before:content-[''] before:absolute before:inset-0 before:bg-black before:opacity-50" style={{ backgroundImage: 'url("/background-theme.png")' }}>
+      <div className="w-full max-w-md p-8 space-y-6 bg-white/5 backdrop-blur-lg rounded-lg border border-cyber-neon/20 px-[32px] mx-[32px] my-0 relative z-10">
         <h2 className="text-2xl font-bold text-center text-white">
           {isLogin ? 'Sign In' : 'Create Account'}
         </h2>
