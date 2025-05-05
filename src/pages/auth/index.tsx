@@ -5,8 +5,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth } from '@/components/AuthProvider';
 
 export default function AuthPage() {
   const [email, setEmail] = useState('');
@@ -14,7 +16,9 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [rememberMe, setRememberMe] = useState(false);
+  const [role, setRole] = useState('admin');
   const navigate = useNavigate();
+  const { setUserRole } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,26 +32,34 @@ export default function AuthPage() {
           email,
           password,
         });
-        
         if (error) throw error;
 
-        // Store persistence session preference
+        // Store role and persist session preference
+        localStorage.setItem('userRole', role);
         localStorage.setItem('persistSession', rememberMe ? 'true' : 'false');
+        setUserRole(role);
         
-        // The redirection will happen in the AuthProvider based on the user's role
-        console.log("Login successful, redirecting...");
+        console.log("Login successful with role:", role);
+        
+        // Navigate based on role
+        if (role === 'admin') {
+          navigate('/');
+        } else {
+          navigate('/user-dashboard');
+        }
       } else {
         const {
           error
         } = await supabase.auth.signUp({
           email,
           password,
-          // New users will automatically be assigned the 'user' role
-          // through the database trigger we created
+          options: {
+            data: {
+              role: role,
+            }
+          }
         });
-        
         if (error) throw error;
-        
         toast({
           title: "Success!",
           description: "Please check your email to confirm your account."
@@ -75,6 +87,19 @@ export default function AuthPage() {
           </div>
           <div>
             <Input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="bg-white/10 border-cyber-neon/30 text-white" />
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-white">Select Role</Label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger className="bg-white/10 border-cyber-neon/30 text-white">
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent className="bg-white/90 text-black border-cyber-neon/30">
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           {isLogin && (
