@@ -85,7 +85,7 @@ export default function ProofOfDeliveryPage() {
     try {
       setLoading(true);
       
-      // Fetch delivery proofs from the new table structure
+      // Fetch delivery proofs from the table structure
       const { data, error } = await supabase
         .from('delivery_proofs')
         .select('*')
@@ -96,13 +96,15 @@ export default function ProofOfDeliveryPage() {
       // Type assertion to ensure the data is of DeliveryProof type
       const proofs = data as unknown as DeliveryProof[];
       
-      // Get user emails for the delivery proofs
+      // Get user emails directly from auth.users through a server-side function
+      // since we can't query auth.users directly from the client
       if (proofs && proofs.length > 0) {
         // Get unique user ids
         const userIds = [...new Set(proofs.map(proof => proof.user_id))];
         
-        // Fetch user profiles
+        // For each user id, fetch the user email from auth
         for (const userId of userIds) {
+          // Query the profiles table which has user emails
           const { data: userData, error: userError } = await supabase
             .from('profiles')
             .select('id, email')
