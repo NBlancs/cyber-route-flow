@@ -154,8 +154,26 @@ export default function ProofOfDeliveryPage() {
     }).format(date);
   };
   
+  // Helper function to sanitize image URLs
+  const sanitizeImageUrl = (url: string) => {
+    try {
+      // If the URL is already properly formatted, return it
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+      
+      // If it's a filename or path, encode it properly
+      const encodedUrl = encodeURI(url.replace(/\s/g, '%20').replace(/\t/g, '%09'));
+      console.log('Sanitized URL:', encodedUrl);
+      return encodedUrl;
+    } catch (error) {
+      console.error('Error sanitizing image URL:', error);
+      return url; // Return original URL if sanitization fails
+    }
+  };
+  
   const openImageViewer = (imageUrl: string) => {
-    setSelectedImage(imageUrl);
+    setSelectedImage(sanitizeImageUrl(imageUrl));
   };
   
   const openEditProof = (proof: DeliveryProof) => {
@@ -304,9 +322,13 @@ export default function ProofOfDeliveryPage() {
                   <div key={proof.id} className="border rounded-lg overflow-hidden bg-white/5">
                     <div className="aspect-video relative">
                       <img 
-                        src={proof.image_url} 
+                        src={sanitizeImageUrl(proof.image_url)} 
                         alt={`Proof for ${proof.tracking_id}`} 
                         className="object-cover w-full h-full"
+                        onError={(e) => {
+                          console.error(`Error loading image: ${proof.image_url}`);
+                          (e.target as HTMLImageElement).src = "/placeholder.svg";
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex flex-col justify-end p-3">
                         <div className="text-white font-medium">{proof.tracking_id}</div>
@@ -343,7 +365,7 @@ export default function ProofOfDeliveryPage() {
                           variant="outline" 
                           size="sm" 
                           className="flex-1"
-                          onClick={() => window.open(proof.image_url, '_blank')}
+                          onClick={() => window.open(sanitizeImageUrl(proof.image_url), '_blank')}
                         >
                           <Download size={16} className="mr-2" /> Download
                         </Button>
@@ -441,6 +463,10 @@ export default function ProofOfDeliveryPage() {
                 src={selectedImage} 
                 alt="Proof of Delivery" 
                 className="max-h-[70vh] object-contain"
+                onError={(e) => {
+                  console.error(`Error loading image in viewer: ${selectedImage}`);
+                  (e.target as HTMLImageElement).src = "/placeholder.svg";
+                }}
               />
             </div>
           )}
