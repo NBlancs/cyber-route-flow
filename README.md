@@ -23,7 +23,7 @@ npm run dev
 
 ## Tools/Technologies Used
 - **Front-end:** Vite + React (TypeScript), Tailwind CSS, shadcn-ui
-- **Back-end:** Laravel
+- **Back-end :** Supabase EDGE Functions
 - **Database:** Supabase
 - **Project Management Tool:** Notion
 - **Deployment:** Vercel
