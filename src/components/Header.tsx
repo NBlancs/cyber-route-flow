@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Package, Map, Truck, Menu, Users, LogOut } from "lucide-react";
+import { Package, Map, Truck, Menu, Users, LogOut, FileCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from 'react';
@@ -40,6 +40,7 @@ export default function Header() {
               <NavLink to="/" icon={<Map size={16} />} label="Map" />
               <NavLink to="/shipments" icon={<Package size={16} />} label="Shipments" />
               <NavLink to="/customers" icon={<Users size={16} />} label="Customers" />
+              <NavLink to="/proof-of-delivery" icon={<FileCheck size={16} />} label="Delivery Proofs" />
             </>
           )}
 
@@ -69,6 +70,7 @@ export default function Header() {
                     <MobileNavLink to="/" icon={<Map size={20} />} label="Map" onClick={() => setOpen(false)} />
                     <MobileNavLink to="/shipments" icon={<Package size={20} />} label="Shipments" onClick={() => setOpen(false)} />
                     <MobileNavLink to="/customers" icon={<Users size={20} />} label="Customers" onClick={() => setOpen(false)} />
+                    <MobileNavLink to="/proof-of-delivery" icon={<FileCheck size={20} />} label="Delivery Proofs" onClick={() => setOpen(false)} />
                   </>
                 )}
                 <div className={`${!isUserDashboard ? 'border-t border-cyber-neon/20 pt-4 mt-4' : ''}`}>
