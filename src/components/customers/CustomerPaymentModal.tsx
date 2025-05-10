@@ -111,18 +111,8 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
             description: "Your payment is being processed. Credit added. Redirecting to payment gateway...",
           });
           
-          // Small delay to allow the toast to be seen
-          setTimeout(() => {
-            // Redirect to the payment checkout URL in a new tab
-            window.open(result.data.checkoutUrl, "_blank");
-            
-            // After a short delay, trigger refresh of customer data anyway
-            setTimeout(() => {
-              if (onSuccess) {
-                onSuccess();
-              }
-            }, 1000);
-          }, 1000);
+          // Redirect to PayMongo payment gateway
+          window.location.href = result.data.checkoutUrl;
         }
       } else {
         throw new Error("Failed to create payment checkout URL");
