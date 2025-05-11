@@ -118,8 +118,24 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
           description: "You are being redirected to complete your payment.",
         });
 
+        try {
+          await updateCustomerCredit(customer.id, parsedAmount);
+          if (onSuccess) {
+            window.open(result.data.checkoutUrl, "_blank");
+            onSuccess(); // Refresh customer data if update is successful
+          }
+        } catch (creditUpdateError) {
+          console.error("Failed to update customer credit after payment intent creation:", creditUpdateError);
+          toast({
+            title: "Credit Update Error",
+            description: "Payment intent created, but failed to update customer credit. Please contact support.",
+            variant: "destructive",
+          });
+          // Optionally, you might want to not proceed with the redirect or handle this case differently
+          // For now, we'll still redirect as the payment intent was created.
+        }
+
           // Redirect to PayMongo payment gateway
-        window.open(result.data.checkoutUrl, "_blank");
         
       } else {
         throw new Error("Failed to create payment checkout URL");
