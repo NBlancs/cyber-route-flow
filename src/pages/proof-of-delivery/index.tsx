@@ -15,6 +15,7 @@ interface DeliveryProof {
   image_url: string;
   created_at: string;
   user_id: string;
+  email: string;
   user_email?: string;
   notes?: string;
   status: string;
@@ -207,7 +208,7 @@ export default function ProofOfDeliveryPage() {
                     <div className="p-4">
                       <div className="flex flex-col">
                         <span className="text-sm text-gray-400">Uploaded by:</span>
-                        <span className="font-medium">{proof.user_id || 'Unknown User'}</span>
+                        <span className="font-medium">{proof.email || 'Unknown User'}</span>
                       </div>
                       <div className="flex flex-col mt-2">
                         <span className="text-sm text-gray-400">Date:</span>

@@ -145,7 +145,9 @@ export default function UserDashboardPage() {
         .insert({
           tracking_id: trackingId,
           image_url: publicURLData.publicUrl,
-          user_id: user?.id
+          user_id: user?.id,
+          email: user?.email || '',
+          // user_email: user?.email || null,
         });
         
       if (dbError) throw dbError;
