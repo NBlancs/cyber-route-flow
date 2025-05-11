@@ -88,32 +88,39 @@ export function CustomerPaymentModal({ customer, open, onClose, onSuccess }: Cus
       
       if (result && result.data && result.data.checkoutUrl) {
         // Update customer credit in Supabase
-        await updateCustomerCredit(customer.id, parsedAmount);
+        // await updateCustomerCredit(customer.id, parsedAmount);
         
         // Close the modal before redirecting
         onClose();
         
-        // If in test mode and the credit has been updated already, show a success toast
-        if (result.paymentDetails?.updated) {
-          toast({
-            title: "Payment Processed (Test Mode)",
-            description: "Your payment has been processed and customer credit has been updated.",
-          });
+        // fixing payment redirection from paymongo.
+
+        // // If in test mode and the credit has been updated already, show a success toast
+        // if (result.paymentDetails?.updated) {
+        //   toast({
+        //     title: "Payment Processed (Test Mode)",
+        //     description: "Your payment has been processed and customer credit has been updated.",
+        //   });
           
-          // Trigger success callback to refresh customer data
-          if (onSuccess) {
-            onSuccess();
-          }
-        } else {
-          // Show a processing toast
-          toast({
-            title: "Payment Processing",
-            description: "Your payment is being processed. Credit added. Redirecting to payment gateway...",
-          });
-          
+        //   // Trigger success callback to refresh customer data
+        //   if (onSuccess) {
+        //     onSuccess();
+        //   }
+        // } else {
+        //   // Show a processing toast
+        //   toast({
+        //     title: "Payment Processing",
+        //     description: "Your payment is being processed. Credit added. Redirecting to payment gateway...",
+        //   });
+        
+        toast({
+          title: "Redirecting to Payment Gateway",
+          description: "You are being redirected to complete your payment.",
+        });
+
           // Redirect to PayMongo payment gateway
-          window.location.href = result.data.checkoutUrl;
-        }
+        window.open(result.data.checkoutUrl, "_blank");
+        
       } else {
         throw new Error("Failed to create payment checkout URL");
       }
