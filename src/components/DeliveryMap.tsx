@@ -92,7 +92,6 @@ export default function DeliveryMap() {
     };
   }, []); // This useEffect runs once on mount
 
-  // New useEffect for adding/updating shipment origin markers
   useEffect(() => {
     if (!mapLoaded || !map.current || !shipments) {
       // If map is not loaded, or no map instance, or no shipments data, clear existing markers and do nothing.
@@ -101,18 +100,19 @@ export default function DeliveryMap() {
       return;
     }
 
-    async function addShipmentOriginMarkers() {
-      if (!map.current) return; // Redundant check, but good for safety
+    async function updateShipmentLocationMarkers() { // Renamed function
+      if (!map.current) return;
 
       // Clear existing markers before adding new ones
       markersRef.current.forEach(marker => marker.remove());
       markersRef.current = [];
 
+      // Process Origins
       const uniqueOrigins = Array.from(new Set(shipments.map(s => s.origin).filter(Boolean)));
 
       if (uniqueOrigins.length === 0) {
         console.log("No unique origins found in shipments to display on map.");
-        return;
+        // Continue to check for destinations even if no origins
       }
 
       for (const cityName of uniqueOrigins) {
@@ -141,7 +141,7 @@ export default function DeliveryMap() {
             markerEl.className = 'flex flex-col items-center';
             
             const pinEl = document.createElement('div');
-            pinEl.className = 'text-cyber-neon'; // Or a different style for shipment origins
+            pinEl.className = 'text-cyber-neon'; // Style for origin
             pinEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
             
             const nameEl = document.createElement('div');
@@ -156,15 +156,72 @@ export default function DeliveryMap() {
               .addTo(map.current!);
             markersRef.current.push(newMarker);
           } else {
-            console.warn(`Geocoding for city "${cityName}" returned no features.`);
+            console.warn(`Geocoding for origin city "${cityName}" returned no features.`);
           }
         } catch (error) {
-          console.error(`Error processing city "${cityName}" for marker:`, error);
+          console.error(`Error processing origin city "${cityName}" for marker:`, error);
+        }
+      }
+
+      // Process Destinations
+      const uniqueDestinations = Array.from(new Set(shipments.map(s => s.destination).filter(Boolean)));
+
+      if (uniqueDestinations.length === 0) {
+        console.log("No unique destinations found in shipments to display on map.");
+      }
+
+      for (const cityName of uniqueDestinations) {
+        try {
+          if (!mapboxgl.accessToken) {
+            console.error("Mapbox access token is not set. Cannot geocode.");
+            // setMapError already handled if token was missing for origins
+            return; 
+          }
+
+          const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(cityName)}.json?country=PH&access_token=${mapboxgl.accessToken}&limit=1`;
+          const response = await fetch(geocodeUrl);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Geocoding API request failed for destination "${cityName}" with status: ${response.status}. Response: ${errorText}`);
+            continue; 
+          }
+
+          const geoData = await response.json();
+
+          if (geoData.features && geoData.features.length > 0) {
+            const coordinates = geoData.features[0].center as [number, number];
+            
+            const markerEl = document.createElement('div');
+            markerEl.className = 'flex flex-col items-center';
+            
+            const pinEl = document.createElement('div');
+            // Apply red color for destination markers
+            // Using Tailwind class, ensure 'text-red-500' is available or use inline style
+            pinEl.className = 'text-red-500'; // Or use pinEl.style.color = 'red';
+            pinEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
+            
+            const nameEl = document.createElement('div');
+            nameEl.className = 'text-xs text-white font-medium bg-black/60 px-1.5 py-0.5 rounded-sm mt-1';
+            nameEl.textContent = cityName;
+            
+            markerEl.appendChild(pinEl);
+            markerEl.appendChild(nameEl);
+            
+            const newMarker = new mapboxgl.Marker(markerEl)
+              .setLngLat(coordinates)
+              .addTo(map.current!);
+            markersRef.current.push(newMarker);
+          } else {
+            console.warn(`Geocoding for destination city "${cityName}" returned no features.`);
+          }
+        } catch (error) {
+          console.error(`Error processing destination city "${cityName}" for marker:`, error);
         }
       }
     }
     
-    addShipmentOriginMarkers();
+    updateShipmentLocationMarkers(); // Updated function call
 
   }, [mapLoaded, shipments, map]); // Re-run when map is loaded, shipments change, or map instance changes
 
