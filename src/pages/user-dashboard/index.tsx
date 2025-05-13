@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -147,15 +146,38 @@ export default function UserDashboardPage() {
           image_url: publicURLData.publicUrl,
           user_id: user?.id,
           email: user?.email || '',
-          // user_email: user?.email || null,
         });
         
       if (dbError) throw dbError;
-      
-      toast({
-        title: "Success!",
-        description: "Proof of delivery uploaded successfully",
-      });
+
+      // Attempt to update the shipment status to 'delivered'
+      const { error: updateShipmentError } = await supabase
+        .from('shipments')
+        .update({ status: 'delivered' })
+        .eq('tracking_id', trackingId);
+
+      if (updateShipmentError) {
+        // Log this error but don't necessarily block the success toast for PoD upload
+        console.error('Error updating shipment status:', updateShipmentError);
+        toast({
+          title: "Proof Uploaded, Status Update Failed",
+          description: `Proof of delivery was uploaded, but failed to update shipment status: ${updateShipmentError.message}`,
+          variant: "warning",
+        });
+      } else {
+        toast({
+          title: "Success!",
+          description: "Proof of delivery uploaded and shipment status updated to Delivered.",
+        });
+        // Optimistically update local state if the shipment is in the list
+        setAssignedShipments(prevShipments =>
+          prevShipments.map(shipment =>
+            shipment.tracking_id === trackingId
+              ? { ...shipment, status: 'delivered' }
+              : shipment
+          )
+        );
+      }
       
       // Clear form
       setTrackingId("");
