@@ -199,67 +199,50 @@ export function ShipmentForm({ isOpen, onClose, onSave, shipment }: ShipmentForm
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-gray-900 border border-gray-800 text-white">
-        <DialogHeader className="flex flex-row items-center justify-between">
+      <DialogContent className="w-full max-w-md sm:max-w-lg bg-gray-900 border border-gray-800 text-white p-4 sm:p-6">
+        <DialogHeader className="flex flex-row items-center justify-between pb-4">
           <DialogTitle>{isEditing ? 'Edit Shipment' : 'Create Shipment'}</DialogTitle>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} className="-mr-2 -mt-2 sm:mr-0 sm:mt-0">
             <X size={18} />
           </Button>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="customer_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Customer</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="bg-gray-800 border border-gray-700 text-white">
-                        <SelectValue placeholder="Select a customer" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-gray-800 border border-gray-700 text-white">
-                      {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="tracking_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tracking ID</FormLabel>
-                  <FormControl>
-                    <Input
-                      className="bg-gray-800 border border-gray-700 text-white"
-                      placeholder="Enter tracking ID"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="max-h-[70vh] sm:max-h-[80vh] overflow-y-auto pr-2">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="origin"
+                name="customer_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Origin</FormLabel>
+                    <FormLabel>Customer</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-gray-800 border border-gray-700 text-white">
+                          <SelectValue placeholder="Select a customer" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-gray-800 border border-gray-700 text-white">
+                        {customers.map((customer) => (
+                          <SelectItem key={customer.id} value={customer.id}>
+                            {customer.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="tracking_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tracking ID</FormLabel>
                     <FormControl>
                       <Input
                         className="bg-gray-800 border border-gray-700 text-white"
-                        placeholder="Enter origin"
+                        placeholder="Enter tracking ID"
                         {...field}
                       />
                     </FormControl>
@@ -267,16 +250,113 @@ export function ShipmentForm({ isOpen, onClose, onSave, shipment }: ShipmentForm
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="origin"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Origin</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="bg-gray-800 border border-gray-700 text-white"
+                          placeholder="Enter origin"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="destination"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Destination</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="bg-gray-800 border border-gray-700 text-white"
+                          placeholder="Enter destination"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="weight"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Weight (kg)</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="bg-gray-800 border border-gray-700 text-white"
+                          placeholder="Enter weight"
+                          type="number"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="shipping_fee"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Shipping Fee</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="bg-gray-800 border border-gray-700 text-white"
+                          placeholder="Enter shipping fee"
+                          type="number"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={form.control}
-                name="destination"
+                name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Destination</FormLabel>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-gray-800 border border-gray-700 text-white">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-gray-800 border border-gray-700 text-white">
+                        <SelectItem value="processing">Processing</SelectItem>
+                        <SelectItem value="in-transit">In Transit</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="failed">Failed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
                     <FormControl>
-                      <Input
-                        className="bg-gray-800 border border-gray-700 text-white"
-                        placeholder="Enter destination"
+                      <Textarea
+                        placeholder="Shipment notes"
+                        className="bg-gray-800 border border-gray-700 text-white resize-none"
                         {...field}
                       />
                     </FormControl>
@@ -284,93 +364,15 @@ export function ShipmentForm({ isOpen, onClose, onSave, shipment }: ShipmentForm
                   </FormItem>
                 )}
               />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="weight"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Weight (kg)</FormLabel>
-                    <FormControl>
-                      <Input
-                        className="bg-gray-800 border border-gray-700 text-white"
-                        placeholder="Enter weight"
-                        type="number"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="shipping_fee"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Shipping Fee</FormLabel>
-                    <FormControl>
-                      <Input
-                        className="bg-gray-800 border border-gray-700 text-white"
-                        placeholder="Enter shipping fee"
-                        type="number"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="bg-gray-800 border border-gray-700 text-white">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-gray-800 border border-gray-700 text-white">
-                      <SelectItem value="processing">Processing</SelectItem>
-                      <SelectItem value="in-transit">In Transit</SelectItem>
-                      <SelectItem value="delivered">Delivered</SelectItem>
-                      <SelectItem value="failed">Failed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Shipment notes"
-                      className="bg-gray-800 border border-gray-700 text-white resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit">{isEditing ? 'Update' : 'Create'} Shipment</Button>
-            </div>
-          </form>
-        </Form>
+              <div className="pt-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
+                  Cancel
+                </Button>
+                <Button type="submit" className="w-full sm:w-auto">{isEditing ? 'Update' : 'Create'} Shipment</Button>
+              </div>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -119,15 +119,15 @@ export function CustomerForm({ customer, isOpen, onClose, onSave }: CustomerForm
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-gray-900 border border-gray-800 text-white">
-        <DialogHeader className="flex flex-row items-center justify-between">
+      <DialogContent className="w-full max-w-md sm:max-w-lg bg-gray-900 border border-gray-800 text-white p-4 sm:p-6">
+        <DialogHeader className="flex flex-row items-center justify-between pb-4">
           <DialogTitle>{customer ? "Edit Customer" : "Add Customer"}</DialogTitle>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} className="-mr-2 -mt-2 sm:mr-0 sm:mt-0">
             <X size={18} />
           </Button>
         </DialogHeader>
 
-        <div className="py-4">
+        <div className="py-4 max-h-[70vh] sm:max-h-[80vh] overflow-y-auto pr-2">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="name">Name</Label>
@@ -174,7 +174,7 @@ export function CustomerForm({ customer, isOpen, onClose, onSave }: CustomerForm
                 className="bg-gray-800 border border-gray-700 rounded-md focus:ring-cyber-neon focus:border-cyber-neon focus:outline-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="city">City</Label>
                 <Input
@@ -198,7 +198,7 @@ export function CustomerForm({ customer, isOpen, onClose, onSave }: CustomerForm
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="zip">Zip Code</Label>
                 <Input
@@ -245,11 +245,11 @@ export function CustomerForm({ customer, isOpen, onClose, onSave }: CustomerForm
               />
             </div>
 
-            <div className="pt-2 flex justify-end space-x-2">
-              <Button variant="outline" onClick={onClose}>
+            <div className="pt-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+              <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" className="w-full sm:w-auto">
                 {customer ? "Update Customer" : "Create Customer"}
               </Button>
             </div>
