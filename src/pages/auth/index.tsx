@@ -72,6 +72,7 @@ export default function AuthPage() {
           options: {
             data: {
               role: role,
+              emailRedirectTo:'https://logistics-and-distributions-cyber-route.vercel.app/congratulations'
             }
           }
         });
