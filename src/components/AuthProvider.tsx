@@ -1,8 +1,7 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -26,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>(localStorage.getItem('userRole') || 'admin');
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Store role in localStorage when it changes
   useEffect(() => {
@@ -52,11 +52,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const storedRole = localStorage.getItem('userRole') || 'admin';
           setUserRole(storedRole);
           
-          // Redirect to the appropriate dashboard based on role
-          if (storedRole === 'admin') {
-            navigate('/');
-          } else {
-            navigate('/user-dashboard');
+          // Check if the current path is the congratulations page
+          const isOnCongratulationsPage = location.pathname.includes('/congratulations');
+          
+          // Only redirect if not already on the congratulations page
+          if (!isOnCongratulationsPage) {
+            // Redirect to the appropriate dashboard based on role
+            if (storedRole === 'admin') {
+              navigate('/');
+            } else {
+              navigate('/user-dashboard');
+            }
           }
         }
         setLoading(false);
@@ -78,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   return (
     <AuthContext.Provider value={{ user, session, loading, userRole, setUserRole }}>
