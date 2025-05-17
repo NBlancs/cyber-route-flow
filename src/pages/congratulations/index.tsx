@@ -12,7 +12,7 @@ export default function CongratulationsPage() {
   
   // Get parameters from URL if they exist
   const message = searchParams.get('message') || 'Account Made Successfully';
-  const returnTo = searchParams.get('returnTo') || '/';
+  const returnTo = searchParams.get('returnTo') || '/auth';
   const returnText = searchParams.get('returnText') || 'Return to Login Page';
   
   useEffect(() => {
