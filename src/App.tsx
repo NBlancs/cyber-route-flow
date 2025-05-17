@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import UserDashboardPage from "./pages/user-dashboard";
 import ProofOfDeliveryPage from "./pages/proof-of-delivery";
 import { useEffect } from "react";
+import CongratulationsPage from "./pages/congratulations";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +72,7 @@ const App = () => (
             <Route path="/shipments" element={<ProtectedRoute requiredRole="admin"><ShipmentsPage /></ProtectedRoute>} />
             <Route path="/proof-of-delivery" element={<ProtectedRoute requiredRole="admin"><ProofOfDeliveryPage /></ProtectedRoute>} />
             <Route path="/user-dashboard" element={<ProtectedRoute requiredRole="user"><UserDashboardPage /></ProtectedRoute>} />
+            <Route path="/congratulations" element={<CongratulationsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </TooltipProvider>
