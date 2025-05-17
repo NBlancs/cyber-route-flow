@@ -34,14 +34,9 @@ export default function AuthPage() {
         });
         if (error) throw error;
 
-        // Store role and persist session preference
-        localStorage.setItem('userRole', role);
+        // Store persist session preference
         localStorage.setItem('persistSession', rememberMe ? 'true' : 'false');
-        setUserRole(role);
         
-        // console.log("Login successful with role:", role);
-        
-        // Navigate based on role
         // Fetch the user's role from the database
         const { data: userData, error: userError } = await supabase
           .from('user_roles')
@@ -49,13 +44,22 @@ export default function AuthPage() {
           .eq('user_id', session.user.id)
           .single();
         
-        if (userError) throw userError;
+        if (userError) {
+          console.error("Error fetching user role:", userError);
+          // Default to user role if there's an error
+          localStorage.setItem('userRole', 'user');
+          setUserRole('user');
+          navigate('/user-dashboard');
+          return;
+        }
         
         const userRole = userData?.role || 'user'; // Default to 'user' if no role found
         
         // Store the fetched role
         localStorage.setItem('userRole', userRole);
         setUserRole(userRole);
+        
+        console.log("Login successful with fetched role:", userRole);
         
         // Navigate based on the fetched role
         if (userRole === 'admin') {

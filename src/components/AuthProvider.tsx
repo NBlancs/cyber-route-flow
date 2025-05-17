@@ -38,30 +38,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get persistence preference
     const persistSession = localStorage.getItem('persistSession') === 'true';
 
+    // Function to fetch user role from database
+    const fetchUserRole = async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .single();
+        
+        if (error) {
+          console.error("Error fetching user role:", error);
+          return 'user'; // Default to user role if there's an error
+        }
+        
+        return data?.role || 'user';
+      } catch (err) {
+        console.error("Unexpected error fetching role:", err);
+        return 'user';
+      }
+    };
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (event === 'SIGNED_OUT') {
           localStorage.removeItem('userRole');
+          setUserRole('');
           navigate('/auth');
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Get role from localStorage
-          const storedRole = localStorage.getItem('userRole') || 'admin';
-          setUserRole(storedRole);
-          
-          // Check if the current path is the congratulations page
-          const isOnCongratulationsPage = location.pathname.includes('/congratulations');
-          
-          // Only redirect if not already on the congratulations page
-          if (!isOnCongratulationsPage) {
-            // Redirect to the appropriate dashboard based on role
-            if (storedRole === 'admin') {
-              navigate('/');
-            } else {
-              navigate('/user-dashboard');
+          if (session?.user?.id) {
+            // Fetch the current role from the database
+            const currentRole = await fetchUserRole(session.user.id);
+            setUserRole(currentRole);
+            localStorage.setItem('userRole', currentRole);
+            
+            // Check if the current path is the congratulations page
+            const isOnCongratulationsPage = location.pathname.includes('/congratulations');
+            
+            // Only redirect if not already on the congratulations page
+            if (!isOnCongratulationsPage) {
+              console.log("Redirecting based on role:", currentRole);
+              // Redirect to the appropriate dashboard based on role
+              if (currentRole === 'admin') {
+                navigate('/');
+              } else {
+                navigate('/user-dashboard');
+              }
             }
           }
         }
@@ -70,9 +96,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      if (session?.user?.id) {
+        // Fetch the current role from the database for existing session
+        const currentRole = await fetchUserRole(session.user.id);
+        setUserRole(currentRole);
+        localStorage.setItem('userRole', currentRole);
+      }
       
       // If there's a session but we're not supposed to persist,
       // sign out if that preference was changed
