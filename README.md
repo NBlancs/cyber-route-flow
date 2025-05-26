@@ -1,5 +1,34 @@
 # Project Name: Logistics and Distribution (CYBERROUTE)
 
+<p align="center">
+  <img src="https://img.shields.io/badge/status-active-brightgreen?style=flat&logo=checkmarx&logoColor=white" />
+  <img src="https://img.shields.io/badge/version-1.0.0-blue?style=flat&logo=semantic-release&logoColor=white" />
+  <img src="https://img.shields.io/badge/license-MIT-green?style=flat&logo=opensourceinitiative&logoColor=white" />
+  <img src="https://img.shields.io/badge/deployment-vercel-black?style=flat&logo=vercel&logoColor=white" />
+</p>
+
+<p align="center"><em>Built with modern logistics and distribution technologies:</em></p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/React-61DAFB.svg?style=flat&logo=React&logoColor=black" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6.svg?style=flat&logo=TypeScript&logoColor=white" />
+  <img src="https://img.shields.io/badge/Vite-646CFF.svg?style=flat&logo=Vite&logoColor=white" />
+  <img src="https://img.shields.io/badge/Tailwind%20CSS-06B6D4.svg?style=flat&logo=Tailwind-CSS&logoColor=white" />
+  <img src="https://img.shields.io/badge/Supabase-3ECF8E.svg?style=flat&logo=Supabase&logoColor=white" />
+  <img src="https://img.shields.io/badge/Node.js-339933.svg?style=flat&logo=Node.js&logoColor=white" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Mapbox-000000.svg?style=flat&logo=Mapbox&logoColor=white" />
+  <img src="https://img.shields.io/badge/PayMongo-FF6B35.svg?style=flat&logo=stripe&logoColor=white" />
+  <img src="https://img.shields.io/badge/Lalamove%20API-00D4AA.svg?style=flat&logo=deliveroo&logoColor=white" />
+  <img src="https://img.shields.io/badge/Notion-000000.svg?style=flat&logo=Notion&logoColor=white" />
+  <img src="https://img.shields.io/badge/Logistics-39FF14.svg?style=flat&logo=truck&logoColor=black" />
+  <img src="https://img.shields.io/badge/Route%20Optimization-0080ff.svg?style=flat&logo=route&logoColor=white" />
+</p>
+
+---
+
 If you want to work locally using your own IDE, you can clone this repo and push changes.
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
