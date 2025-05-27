@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/status-active-brightgreen?style=flat&logo=checkmarx&logoColor=white" />
-  <img src="https://img.shields.io/badge/version-1.0.0-blue?style=flat&logo=semantic-release&logoColor=white" />
+  <img src="https://img.shields.io/badge/version-1.2.1-blue?style=flat&logo=semantic-release&logoColor=white" />
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat&logo=opensourceinitiative&logoColor=white" />
   <img src="https://img.shields.io/badge/deployment-vercel-black?style=flat&logo=vercel&logoColor=white" />
 </p>
