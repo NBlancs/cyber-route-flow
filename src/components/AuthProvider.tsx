@@ -23,20 +23,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>(localStorage.getItem('userRole') || 'admin');
+  const [userRole, setUserRole] = useState<string>(() => {
+    try {
+      return localStorage.getItem('userRole') || 'admin';
+    } catch {
+      return 'admin';
+    }
+  });
   const navigate = useNavigate();
   const location = useLocation();
 
   // Store role in localStorage when it changes
   useEffect(() => {
     if (userRole) {
-      localStorage.setItem('userRole', userRole);
+      try {
+        localStorage.setItem('userRole', userRole);
+      } catch (err) {
+        console.warn("Failed to save user role to localStorage:", err);
+      }
     }
   }, [userRole]);
 
+  // Single fallback timeout to prevent infinite loading
   useEffect(() => {
+    const fallbackTimeout = setTimeout(() => {
+      console.warn("Auth initialization timeout - forcing loading to false");
+      setLoading(false);
+    }, 8000); // 8 second timeout
+
+    return () => clearTimeout(fallbackTimeout);
+  }, []);  useEffect(() => {
+    let mounted = true;
+    let authSubscription: any = null;
+
     // Get persistence preference
-    const persistSession = localStorage.getItem('persistSession') === 'true';
+    const persistSession = (() => {
+      try {
+        return localStorage.getItem('persistSession') === 'true';
+      } catch {
+        return false;
+      }
+    })();
 
     // Function to fetch user role from database
     const fetchUserRole = async (userId: string) => {
@@ -49,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (error) {
           console.error("Error fetching user role:", error);
-          return 'user'; // Default to user role if there's an error
+          return 'user';
         }
         
         return data?.role || 'user';
@@ -59,64 +86,135 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    // Initialize auth state
+    const initializeAuth = async () => {
+      try {
+        console.log("Initializing auth state...");
+        
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error getting session:", error);
+          if (mounted) {
+            setLoading(false);
+          }
+          return;
+        }
+        
+        if (!mounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (event === 'SIGNED_OUT') {
-          localStorage.removeItem('userRole');
-          setUserRole('');
-          navigate('/auth');
-        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (session?.user?.id) {
-            // Fetch the current role from the database
+        if (session?.user?.id) {
+          try {
             const currentRole = await fetchUserRole(session.user.id);
-            setUserRole(currentRole);
-            localStorage.setItem('userRole', currentRole);
-            
-            // Check if the current path is the congratulations page
-            const isOnCongratulationsPage = location.pathname.includes('/congratulations');
-            
-            // Only redirect if not already on the congratulations page
-            if (!isOnCongratulationsPage) {
-              console.log("Redirecting based on role:", currentRole);
-              // Redirect to the appropriate dashboard based on role
-              if (currentRole === 'admin') {
-                navigate('/');
-              } else {
-                navigate('/user-dashboard');
+            if (mounted) {
+              setUserRole(currentRole);
+              try {
+                localStorage.setItem('userRole', currentRole);
+              } catch (err) {
+                console.warn("Failed to save user role to localStorage:", err);
               }
+            }
+          } catch (roleError) {
+            console.error("Error fetching role during initialization:", roleError);
+            const cachedRole = (() => {
+              try {
+                return localStorage.getItem('userRole') || 'user';
+              } catch {
+                return 'user';
+              }
+            })();
+            if (mounted) {
+              setUserRole(cachedRole);
             }
           }
         }
-        setLoading(false);
+        
+        if (mounted) {
+          console.log("Auth initialization complete, setting loading to false");
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Error during auth initialization:", err);
+        if (mounted) {
+          setLoading(false);
+        }
       }
-    );
+    };
 
-    // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    // Set up auth state listener
+    const setupAuthListener = () => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (!mounted) return;
+          
+          console.log("Auth state change event:", event, "Session:", !!session);
+          
+          try {
+            setSession(session);
+            setUser(session?.user ?? null);
+            
+            if (event === 'SIGNED_OUT') {
+              try {
+                localStorage.removeItem('userRole');
+              } catch (err) {
+                console.warn("Failed to remove user role from localStorage:", err);
+              }
+              setUserRole('');
+              navigate('/auth');
+            } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              if (session?.user?.id) {
+                const currentRole = await fetchUserRole(session.user.id);
+                if (mounted) {
+                  setUserRole(currentRole);
+                  try {
+                    localStorage.setItem('userRole', currentRole);
+                  } catch (err) {
+                    console.warn("Failed to save user role to localStorage:", err);
+                  }
+                  
+                  const isOnCongratulationsPage = location.pathname.includes('/congratulations');
+                  
+                  if (!isOnCongratulationsPage) {
+                    console.log("Redirecting based on role:", currentRole);
+                    if (currentRole === 'admin') {
+                      navigate('/');
+                    } else {
+                      navigate('/user-dashboard');
+                    }
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            console.error("Error in auth state change handler:", err);
+          } finally {
+            if (mounted && event !== 'TOKEN_REFRESHED') {
+              setLoading(false);
+            }
+          }
+        }
+      );
       
-      if (session?.user?.id) {
-        // Fetch the current role from the database for existing session
-        const currentRole = await fetchUserRole(session.user.id);
-        setUserRole(currentRole);
-        localStorage.setItem('userRole', currentRole);
+      authSubscription = subscription;
+      return subscription;
+    };
+
+    // Initialize auth and set up listener
+    initializeAuth().then(() => {
+      if (mounted) {
+        setupAuthListener();
       }
-      
-      // If there's a session but we're not supposed to persist,
-      // sign out if that preference was changed
-      if (session && !persistSession) {
-        // Keep session for current browser session but don't persist on reload
-      }
-      
-      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+    };
   }, [navigate, location.pathname]);
 
   return (

@@ -13,8 +13,21 @@ import UserDashboardPage from "./pages/user-dashboard";
 import ProofOfDeliveryPage from "./pages/proof-of-delivery";
 import { useEffect } from "react";
 import CongratulationsPage from "./pages/congratulations";
+import { preventCaching } from "./utils/cacheManager";
+import CacheDebugger from "./components/CacheDebugger";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+    },
+  },
+});
 
 function ProtectedRoute({ 
   children, 
@@ -32,16 +45,27 @@ function ProtectedRoute({
       userRole, 
       requiredRole, 
       isAuthenticated: !!user, 
-      isLoading: loading 
+      isLoading: loading,
+      currentPath: location.pathname
     });
-  }, [user, loading, userRole, requiredRole]);
+  }, [user, loading, userRole, requiredRole, location.pathname]);
   
+  // Show loading only briefly, with a maximum timeout
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cyber-dark">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-2 border-cyber-neon border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-cyber-neon">Loading...</p>
+          <p className="text-gray-400 text-sm mt-2">If this takes too long, try refreshing the page</p>
+        </div>
+      </div>
+    );
   }
   
   // Not authenticated - redirect to login
   if (!user) {
+    console.log("User not authenticated, redirecting to /auth");
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
   
@@ -58,27 +82,34 @@ function ProtectedRoute({
   return <>{children}</>;
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/" element={<ProtectedRoute requiredRole="admin"><Index /></ProtectedRoute>} />
-            <Route path="/customers" element={<ProtectedRoute requiredRole="admin"><CustomersPage /></ProtectedRoute>} />
-            <Route path="/shipments" element={<ProtectedRoute requiredRole="admin"><ShipmentsPage /></ProtectedRoute>} />
-            <Route path="/proof-of-delivery" element={<ProtectedRoute requiredRole="admin"><ProofOfDeliveryPage /></ProtectedRoute>} />
-            <Route path="/user-dashboard" element={<ProtectedRoute requiredRole="user"><UserDashboardPage /></ProtectedRoute>} />
-            <Route path="/congratulations" element={<CongratulationsPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </TooltipProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
-);
+const App = () => {
+  useEffect(() => {
+    // Prevent caching on app initialization
+    preventCaching();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />            <Routes>
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/" element={<ProtectedRoute requiredRole="admin"><Index /></ProtectedRoute>} />
+              <Route path="/customers" element={<ProtectedRoute requiredRole="admin"><CustomersPage /></ProtectedRoute>} />
+              <Route path="/shipments" element={<ProtectedRoute requiredRole="admin"><ShipmentsPage /></ProtectedRoute>} />
+              <Route path="/proof-of-delivery" element={<ProtectedRoute requiredRole="admin"><ProofOfDeliveryPage /></ProtectedRoute>} />
+              <Route path="/user-dashboard" element={<ProtectedRoute requiredRole="user"><UserDashboardPage /></ProtectedRoute>} />
+              <Route path="/congratulations" element={<CongratulationsPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <CacheDebugger />
+          </TooltipProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
