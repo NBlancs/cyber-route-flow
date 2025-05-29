@@ -6,7 +6,14 @@
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat&logo=opensourceinitiative&logoColor=white" />
   <img src="https://img.shields.io/badge/deployment-vercel-black?style=flat&logo=vercel&logoColor=white" />
 </p>
-
+<p align="center">
+  <a href="https://github.com/NBlancs/cyber-route-flow/blob/main/documentation.md">
+    <img src="https://img.shields.io/badge/Documentation%20%20-8A2BE2" alt="Documentation">
+  </a>
+  <a href="https://github.com/NBlancs/cyber-route-flow/blob/main/softwarearchitecture.md">
+    <img src="https://img.shields.io/badge/Software%20Architecture%20%20-1A74BD" alt="Software Architecture">
+  </a>
+</p>
 <p align="center"><em>Built with modern logistics and distribution technologies:</em></p>
 
 <p align="center">
