@@ -159,6 +159,3 @@ Manages the **physical movement of goods**, from planning delivery routes to tra
 3. System should generate **alerts for significant price changes** or deviations.  
 
 ---
-
-
-.. / -. . . -.. / .... . .-.. .--.
