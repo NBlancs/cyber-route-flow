@@ -386,6 +386,4 @@ flowchart TD
 
 ---
 
-**Document Version**: 1.2.1  
-**Last Updated**: December 2024  
-**Next Review**: March 2025
+**Document Version**: 1.2.1 
